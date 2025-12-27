@@ -1,8 +1,8 @@
 //////////////////////////////////////
- // ChocoLang 1.0.0 - Sweet Wonderland
- // CoffeeShop Development
- // Made by Camila "Mocha" Rose
- //////////////////////////////////////
+// ChocoLang 2.0.0 - Sweet Wonderland
+// CoffeeShop Development
+// Made by Camila "Mocha" Rose
+//////////////////////////////////////
 
 #include <iostream>
 #include <string>
@@ -346,6 +346,17 @@ private:
             return true;
         }
         return false;
+    }
+
+    bool isBuiltinFunction(const std::string& name) {
+        return name == "len" || name == "push" || name == "pop" ||
+               name == "sqrt" || name == "pow" || name == "abs" ||
+               name == "floor" || name == "ceil" || name == "round" ||
+               name == "min" || name == "max" || name == "random" || name == "random_int" ||
+               name == "str" || name == "int" || name == "float" ||
+               name == "uppercase" || name == "lowercase" || name == "substr" ||
+               name == "split" || name == "join" ||
+               name == "read_file" || name == "write_file" || name == "append_file" || name == "file_exists";
     }
 
     void setVariable(const std::string& name, const Value& val) {
@@ -887,17 +898,21 @@ private:
         
         while (true) {
             if (match(TOKEN_LPAREN)) {
-                if (val.type == Value::STRING) {
-                    std::string funcName = val.str;
-                    std::vector<Value> args;
-                    while (!match(TOKEN_RPAREN)) {
-                        args.push_back(expression());
-                        if (!match(TOKEN_COMMA)) {
-                            match(TOKEN_RPAREN);
-                            break;
-                        }
+                std::vector<Value> args;
+                while (!match(TOKEN_RPAREN)) {
+                    args.push_back(expression());
+                    if (!match(TOKEN_COMMA)) {
+                        match(TOKEN_RPAREN);
+                        break;
                     }
-                    val = callFunction(funcName, args);
+                }
+                
+                // If val is a string (function name), call it
+                if (val.type == Value::STRING) {
+                    val = callFunction(val.str, args);
+                } else {
+                    // Invalid function call
+                    val = Value();
                 }
             } else if (match(TOKEN_LBRACKET)) {
                 Value index = expression();
@@ -1261,10 +1276,13 @@ private:
                 return structVal;
             }
             
-            if (functions.find(name) != functions.end()) {
+            // Check if it's a function (user-defined or built-in)
+            // Return the name as a string so call() can invoke it
+            if (functions.find(name) != functions.end() || isBuiltinFunction(name)) {
                 return Value(name);
             }
             
+            // Otherwise it's a variable
             return getVariable(name);
         }
         if (match(TOKEN_LPAREN)) {

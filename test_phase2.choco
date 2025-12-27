@@ -1,0 +1,343 @@
+// Choco Language - Phase 2 Features Demo
+// Structs, File I/O, Error Handling, Standard Library, Break/Continue
+
+puts "=== Choco Phase 2 Demo ===";
+puts "";
+
+// ============================================
+// 1. Structs / Custom Types
+// ============================================
+puts "=== Structs ===";
+
+struct Person {
+    name,
+    age,
+    city
+}
+
+let alice = Person { name: "Alice", age: 30, city: "NYC" };
+let bob = Person { name: "Bob", age: 25, city: "LA" };
+
+puts "Person 1:";
+puts alice;
+
+puts "Accessing fields:";
+puts alice.name;
+puts alice.age;
+puts alice.city;
+
+puts "Person 2:";
+puts bob.name;
+
+// ============================================
+// 2. Break and Continue
+// ============================================
+puts "";
+puts "=== Break and Continue ===";
+
+puts "Break example - stop at 5:";
+for i in 0..10 {
+    if i == 5 {
+        break;
+    }
+    puts i;
+}
+
+puts "Continue example - skip even numbers:";
+for i in 0..10 {
+    if i % 2 == 0 {
+        continue;
+    }
+    puts i;
+}
+
+// ============================================
+// 3. Standard Library - Math Functions
+// ============================================
+puts "";
+puts "=== Math Functions ===";
+
+let num = 16;
+puts "sqrt(16):";
+puts sqrt(num);
+
+puts "pow(2, 8):";
+puts pow(2, 8);
+
+puts "abs(-42):";
+puts abs(-42);
+
+puts "floor(3.7):";
+puts floor(3.7);
+
+puts "ceil(3.2):";
+puts ceil(3.2);
+
+puts "round(3.5):";
+puts round(3.5);
+
+puts "min(5, 3):";
+puts min(5, 3);
+
+puts "max(5, 3):";
+puts max(5, 3);
+
+// ============================================
+// 4. Random Numbers
+// ============================================
+puts "";
+puts "=== Random Numbers ===";
+
+puts "Random float (0-1):";
+puts random();
+
+puts "Random int (1-10):";
+puts random_int(1, 10);
+
+// ============================================
+// 5. Array Functions
+// ============================================
+puts "";
+puts "=== Array Functions ===";
+
+let numbers = [1, 2, 3];
+puts "Original array:";
+puts numbers;
+
+puts "Length of array:";
+puts len(numbers);
+
+// ============================================
+// 6. String Functions
+// ============================================
+puts "";
+puts "=== String Functions ===";
+
+let text = "Hello World";
+puts "Original string:";
+puts text;
+
+puts "Length:";
+puts len(text);
+
+puts "Uppercase:";
+puts uppercase(text);
+
+puts "Lowercase:";
+puts lowercase(text);
+
+puts "Substring (0, 5):";
+puts substr(text, 0, 5);
+
+let sentence = "apple,banana,cherry";
+puts "Split by comma:";
+let fruits = split(sentence, ",");
+puts fruits;
+
+puts "Join with ' - ':";
+let joined = join(fruits, " - ");
+puts joined;
+
+// ============================================
+// 7. Type Conversion
+// ============================================
+puts "";
+puts "=== Type Conversion ===";
+
+let num_str = "42";
+puts "String to int:";
+puts int(num_str);
+
+let float_str = "3.14";
+puts "String to float:";
+puts float(float_str);
+
+let number = 123;
+puts "Number to string:";
+puts str(number);
+
+// ============================================
+// 8. File I/O
+// ============================================
+puts "";
+puts "=== File I/O ===";
+
+// Write to file
+let content = "Hello from Choco!";
+let success = write_file("output.txt", content);
+
+if success == true {
+    puts "File written successfully!";
+}
+
+// Append to file
+append_file("output.txt", "\nSecond line!");
+
+// Read from file
+let file_content = read_file("output.txt");
+puts "File contents:";
+puts file_content;
+
+// Check if file exists
+let exists = file_exists("output.txt");
+if exists == true {
+    puts "File exists!";
+}
+
+// ============================================
+// 9. Error Handling
+// ============================================
+puts "";
+puts "=== Error Handling ===";
+
+try {
+    puts "In try block";
+    let risky = 10 / 2;
+    puts risky;
+    throw "Something went wrong!";
+    puts "This won't execute";
+} catch err {
+    puts "Caught error:";
+    puts err;
+}
+
+puts "After try-catch";
+
+// ============================================
+// 10. Complex Example: Data Processing
+// ============================================
+puts "";
+puts "=== Complex Example ===";
+
+struct Student {
+    name,
+    grade,
+    passed
+}
+
+fn create_student(name, grade) {
+    let passed = grade >= 60;
+    return Student { name: name, grade: grade, passed: passed };
+}
+
+let students = [
+    create_student("Alice", 85),
+    create_student("Bob", 55),
+    create_student("Charlie", 92)
+];
+
+puts "Students:";
+for i in 0..len(students) {
+    let student = students[i];
+    puts "---";
+    puts student.name;
+    puts student.grade;
+    
+    if student.passed == true {
+        puts "Status: PASSED";
+    } else {
+        puts "Status: FAILED";
+    }
+}
+
+// ============================================
+// 11. String Indexing
+// ============================================
+puts "";
+puts "=== String Indexing ===";
+
+let word = "Hello";
+puts "First character:";
+puts word[0];
+
+puts "Third character:";
+puts word[2];
+
+// ============================================
+// 12. Nested Structs
+// ============================================
+puts "";
+puts "=== Nested Structs ===";
+
+struct Address {
+    street,
+    city,
+    zip
+}
+
+struct Employee {
+    name,
+    position,
+    address
+}
+
+let addr = Address { street: "123 Main St", city: "NYC", zip: 10001 };
+let emp = Employee { name: "John Doe", position: "Developer", address: addr };
+
+puts "Employee:";
+puts emp.name;
+puts emp.position;
+puts "Address:";
+puts emp.address.street;
+puts emp.address.city;
+
+// ============================================
+// 13. Advanced Control Flow
+// ============================================
+puts "";
+puts "=== Advanced Control Flow ===";
+
+puts "Nested loops with break:";
+for i in 0..3 {
+    for j in 0..3 {
+        if j == 2 {
+            break;
+        }
+        let val = i * 10 + j;
+        puts val;
+    }
+}
+
+// ============================================
+// 14. Standard Library in Action
+// ============================================
+puts "";
+puts "=== Standard Library Demo ===";
+
+fn calculate_stats(numbers) {
+    let sum = 0;
+    let count = len(numbers);
+    
+    for i in 0..count {
+        sum = sum + numbers[i];
+    }
+    
+    let avg = sum / count;
+    let min_val = numbers[0];
+    let max_val = numbers[0];
+    
+    for i in 1..count {
+        min_val = min(min_val, numbers[i]);
+        max_val = max(max_val, numbers[i]);
+    }
+    
+    puts "Count: ";
+    puts count;
+    puts "Sum: ";
+    puts sum;
+    puts "Average: ";
+    puts avg;
+    puts "Min: ";
+    puts min_val;
+    puts "Max: ";
+    puts max_val;
+}
+
+let data = [23, 45, 12, 67, 34, 89, 15];
+puts "Statistics for array:";
+puts data;
+calculate_stats(data);
+
+puts "";
+puts "=== Phase 2 Demo Complete! ===";
+puts "Features: Structs, File I/O, Error Handling, Break/Continue, Standard Library";
