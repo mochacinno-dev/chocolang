@@ -20,23 +20,53 @@ puts "It supports functions, arrays, loops, and more advanced features.";
 
 puts "<=== ROADMAP ===>";
 
-puts "<=== Version 2.0.0";
+puts "<=== Version 0.1.0 - Chocolate Delight ===>";
+puts "1. Basic syntax and structure";
+puts "2. Variables and data types";
+puts "3. Control flow (if/else, loops)";
+
+puts "";
+
+puts "<=== Version 0.1.5 - Waffle Crunch Patch";
+puts "4. Functions (declaration, parameters, return values)";
+puts "5. Arrays and basic operations";
+puts "6. Basic I/O (print to console)";
+puts "7. Comments";
+
+puts "";
+
+puts "<=== Version 0.2.0 - Sweet Wonderland";
 puts "6. Structs/custom types";
 puts "7. Module system (import/export)";
 puts "8. File I/O";
 puts "9. Error handling (try/catch)";
 puts "10. Standard library basics";
+
 puts "";
-puts "<=== Version 3.0.0";
+
+puts "<=== Version 0.3.0 - Milky Way";
 puts "11. Type system with inference";
 puts "12. Closures and lambdas";
 puts "13. Async/await";
+
+puts "";    
+
+puts "<=== Version 0.3.5 - Caramel Swirl Patch";
 puts "14. Pattern matching";
 puts "15. Generics";
+
 puts "";
-puts "<=== Version 4.0.0";
-puts "16. Package manager";
-puts "17. LSP for IDE support";
-puts "18. Testing framework";
-puts "19. Documentation generator";
-puts "20. REPL";
+
+puts "<=== Version 0.4.0 - Cocoa Dream";
+puts "16. LSP for IDE support";
+puts "17. REPL";
+puts "18. User Input Functionality";
+
+puts "";
+
+puts "<=== Version 1.0.0 - Choco Crunch ===>";
+puts "19. Testing framework";
+puts "20. Documentation generator";
+puts "21. Package manager";
+puts "22. Performance optimizations";
+puts "23. Interpreted -> Compiled transition";

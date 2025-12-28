@@ -1,21 +1,21 @@
 {
-    "name": "choco-lang",
+    "name": "choco",
     "displayName": "Choco",
     "description": "Syntax highlighting and language support for Choco programming language (.choco) - A blend of Go, Rust, and Ruby syntax.",
-    "version": "1.0.0",
+    "version": "3.1.0",
     "publisher": "CoffeeShop Development",
     "author": {
         "name": "Camila 'Mocha' Rose"
     },
-    "license": "MIT",
+    "license": "GPL-3.0-only",
     "repository": {
         "type": "git",
-        "url": "https://github.com/yourusername/choco-lang"
+        "url": "https://github.com/mochacinno-dev/ChocoLang"
     },
     "bugs": {
-        "url": "https://github.com/yourusername/choco-lang/issues"
+        "url": "https://github.com/mochacinno-dev/ChocoLang/issues"
     },
-    "homepage": "https://github.com/yourusername/choco-lang#readme",
+    "homepage": "https://github.com/mochacinno-dev/ChocoLang#readme",
     "engines": {
         "vscode": "^1.50.0"
     },
@@ -34,7 +34,7 @@
         "rust",
         "ruby"
     ],
-    "icon": "icon.png",
+    "icon": "assets/choco.png",
     "contributes": {
         "languages": [
             {
@@ -43,8 +43,8 @@
                 "extensions": [".choco"],
                 "configuration": "./language-configuration.json",
                 "icon": {
-                    "light": "./icons/choco-light.svg",
-                    "dark": "./icons/choco-dark.svg"
+                    "light": "./icons/choco.svg",
+                    "dark": "./icons/choco.svg"
                 }
             }
         ],
