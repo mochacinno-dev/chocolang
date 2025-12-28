@@ -1,5 +1,5 @@
 //////////////////////////////////////
-// ChocoLang 2.0.0 - Sweet Wonderland
+// ChocoLang 3.0.0 - Milky Way
 // CoffeeShop Development
 // Made by Camila "Mocha" Rose
 //////////////////////////////////////
@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <ctime>
 #include <cstdlib>
+#include <functional>
 
 // Token types
 enum TokenType {
@@ -24,12 +25,14 @@ enum TokenType {
     TOKEN_LET, TOKEN_FN, TOKEN_IF, TOKEN_ELSE, TOKEN_WHILE, TOKEN_FOR, TOKEN_IN,
     TOKEN_RETURN, TOKEN_PUTS, TOKEN_TRUE, TOKEN_FALSE, TOKEN_STRUCT, TOKEN_IMPL,
     TOKEN_IMPORT, TOKEN_FROM, TOKEN_TRY, TOKEN_CATCH, TOKEN_THROW, TOKEN_BREAK, TOKEN_CONTINUE,
+    TOKEN_MATCH, TOKEN_CASE, TOKEN_DEFAULT, TOKEN_ARROW_FAT, TOKEN_ASYNC, TOKEN_AWAIT,
     TOKEN_PLUS, TOKEN_MINUS, TOKEN_STAR, TOKEN_SLASH, TOKEN_PERCENT,
     TOKEN_EQUAL, TOKEN_EQUAL_EQUAL, TOKEN_BANG_EQUAL,
     TOKEN_LESS, TOKEN_GREATER, TOKEN_LESS_EQUAL, TOKEN_GREATER_EQUAL,
     TOKEN_AND, TOKEN_OR, TOKEN_BANG,
     TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_LBRACE, TOKEN_RBRACE, TOKEN_LBRACKET, TOKEN_RBRACKET,
-    TOKEN_COMMA, TOKEN_SEMICOLON, TOKEN_ARROW, TOKEN_DOT, TOKEN_DOTDOT, TOKEN_COLON
+    TOKEN_COMMA, TOKEN_SEMICOLON, TOKEN_ARROW, TOKEN_DOT, TOKEN_DOTDOT, TOKEN_COLON,
+    TOKEN_PIPE
 };
 
 struct Token {
@@ -115,6 +118,9 @@ private:
                 if (pos < source.length() && source[pos] == '=') {
                     pos++;
                     return {TOKEN_EQUAL_EQUAL, "==", line};
+                } else if (pos < source.length() && source[pos] == '>') {
+                    pos++;
+                    return {TOKEN_ARROW_FAT, "=>", line};
                 }
                 return {TOKEN_EQUAL, "=", line};
             case '!':
@@ -146,7 +152,7 @@ private:
                     pos++;
                     return {TOKEN_OR, "||", line};
                 }
-                break;
+                return {TOKEN_PIPE, "|", line};
         }
         return {TOKEN_EOF, "", line};
     }
@@ -202,6 +208,11 @@ private:
         if (id == "throw") return {TOKEN_THROW, id, line};
         if (id == "break") return {TOKEN_BREAK, id, line};
         if (id == "continue") return {TOKEN_CONTINUE, id, line};
+        if (id == "match") return {TOKEN_MATCH, id, line};
+        if (id == "case") return {TOKEN_CASE, id, line};
+        if (id == "default") return {TOKEN_DEFAULT, id, line};
+        if (id == "async") return {TOKEN_ASYNC, id, line};
+        if (id == "await") return {TOKEN_AWAIT, id, line};
 
         return {TOKEN_IDENTIFIER, id, line};
     }
@@ -237,19 +248,25 @@ class Interpreter;
 
 // Value types
 struct Value {
-    enum Type { NUMBER, STRING, BOOL, ARRAY, STRUCT, NIL } type;
+    enum Type { NUMBER, STRING, BOOL, ARRAY, STRUCT, LAMBDA, NIL } type;
     double num;
     std::string str;
     bool boolean;
     std::vector<Value> array;
     std::map<std::string, Value> structFields;
     std::string structType;
+    
+    // Lambda/closure support
+    std::vector<std::string> lambdaParams;
+    size_t lambdaBodyStart;
+    size_t lambdaBodyEnd;
+    std::map<std::string, Value> closureCaptures;
 
-    Value() : type(NIL), num(0), boolean(false) {}
-    Value(double n) : type(NUMBER), num(n), boolean(false) {}
-    Value(const std::string& s) : type(STRING), str(s), num(0), boolean(false) {}
-    Value(bool b) : type(BOOL), num(0), boolean(b) {}
-    Value(const std::vector<Value>& arr) : type(ARRAY), num(0), boolean(false), array(arr) {}
+    Value() : type(NIL), num(0), boolean(false), lambdaBodyStart(0), lambdaBodyEnd(0) {}
+    Value(double n) : type(NUMBER), num(n), boolean(false), lambdaBodyStart(0), lambdaBodyEnd(0) {}
+    Value(const std::string& s) : type(STRING), str(s), num(0), boolean(false), lambdaBodyStart(0), lambdaBodyEnd(0) {}
+    Value(bool b) : type(BOOL), num(0), boolean(b), lambdaBodyStart(0), lambdaBodyEnd(0) {}
+    Value(const std::vector<Value>& arr) : type(ARRAY), num(0), boolean(false), array(arr), lambdaBodyStart(0), lambdaBodyEnd(0) {}
 
     std::string toString() const {
         switch (type) {
@@ -284,9 +301,23 @@ struct Value {
                 result += " }";
                 return result;
             }
+            case LAMBDA: return "<lambda>";
             case NIL: return "nil";
         }
         return "";
+    }
+    
+    std::string getType() const {
+        switch (type) {
+            case NUMBER: return "number";
+            case STRING: return "string";
+            case BOOL: return "bool";
+            case ARRAY: return "array";
+            case STRUCT: return structType.empty() ? "struct" : structType;
+            case LAMBDA: return "lambda";
+            case NIL: return "nil";
+        }
+        return "unknown";
     }
 };
 
@@ -356,7 +387,8 @@ private:
                name == "str" || name == "int" || name == "float" ||
                name == "uppercase" || name == "lowercase" || name == "substr" ||
                name == "split" || name == "join" ||
-               name == "read_file" || name == "write_file" || name == "append_file" || name == "file_exists";
+               name == "read_file" || name == "write_file" || name == "append_file" || name == "file_exists" ||
+               name == "map" || name == "filter" || name == "reduce" || name == "typeof";
     }
 
     void setVariable(const std::string& name, const Value& val) {
@@ -410,6 +442,8 @@ private:
             whileStatement();
         } else if (match(TOKEN_FOR)) {
             forStatement();
+        } else if (match(TOKEN_MATCH)) {
+            matchStatement();
         } else if (match(TOKEN_RETURN)) {
             returnStatement();
         } else if (peek().type == TOKEN_IDENTIFIER && current + 1 < tokens.size() && tokens[current + 1].type == TOKEN_EQUAL) {
@@ -521,7 +555,7 @@ private:
             if (braceCount > 0) tryEnd++;
         }
         
-        current = tryEnd + 1; // Move past try block closing brace
+        current = tryEnd + 1;
         
         if (!match(TOKEN_CATCH)) {
             std::cerr << "Error: Expected 'catch' after try block" << std::endl;
@@ -540,7 +574,6 @@ private:
             if (braceCount > 0) catchEnd++;
         }
         
-        // Execute try block
         current = tryStart;
         inTryCatch = true;
         currentException = "";
@@ -551,7 +584,6 @@ private:
         
         inTryCatch = false;
         
-        // If exception was thrown, execute catch block
         if (!currentException.empty()) {
             scopes.push_back(std::map<std::string, Value>());
             setVariable(errorVar.value, Value(currentException));
@@ -577,6 +609,95 @@ private:
         } else {
             std::cerr << "Uncaught exception: " << msg.toString() << std::endl;
             exit(1);
+        }
+    }
+
+    void matchStatement() {
+        Value matchValue = expression();
+        match(TOKEN_LBRACE);
+        
+        bool matched = false;
+        
+        // Parse and store all cases first
+        std::vector<std::pair<Value, std::pair<size_t, size_t>>> cases;
+        size_t defaultStart = 0, defaultEnd = 0;
+        bool hasDefault = false;
+        
+        while (peek().type != TOKEN_RBRACE && !isAtEnd()) {
+            if (match(TOKEN_CASE)) {
+                Value caseValue = expression();
+                match(TOKEN_ARROW_FAT);
+                match(TOKEN_LBRACE);
+                size_t caseBodyStart = current;
+                
+                int braceCount = 1;
+                size_t caseBodyEnd = current;
+                while (braceCount > 0 && caseBodyEnd < tokens.size()) {
+                    if (tokens[caseBodyEnd].type == TOKEN_LBRACE) braceCount++;
+                    if (tokens[caseBodyEnd].type == TOKEN_RBRACE) braceCount--;
+                    if (braceCount > 0) caseBodyEnd++;
+                }
+                
+                cases.push_back({caseValue, {caseBodyStart, caseBodyEnd}});
+                current = caseBodyEnd + 1;
+                
+            } else if (match(TOKEN_DEFAULT)) {
+                match(TOKEN_ARROW_FAT);
+                match(TOKEN_LBRACE);
+                hasDefault = true;
+                defaultStart = current;
+                
+                int braceCount = 1;
+                defaultEnd = current;
+                while (braceCount > 0 && defaultEnd < tokens.size()) {
+                    if (tokens[defaultEnd].type == TOKEN_LBRACE) braceCount++;
+                    if (tokens[defaultEnd].type == TOKEN_RBRACE) braceCount--;
+                    if (braceCount > 0) defaultEnd++;
+                }
+                
+                current = defaultEnd + 1;
+            } else {
+                advance();
+            }
+        }
+        
+        // Save position after match block
+        size_t afterMatch = current;
+        match(TOKEN_RBRACE);
+        
+        // Now execute the matching case
+        for (const auto& caseItem : cases) {
+            Value caseValue = caseItem.first;
+            size_t caseBodyStart = caseItem.second.first;
+            size_t caseBodyEnd = caseItem.second.second;
+            
+            bool isMatch = false;
+            if (matchValue.type == caseValue.type) {
+                if (matchValue.type == Value::NUMBER) isMatch = matchValue.num == caseValue.num;
+                else if (matchValue.type == Value::STRING) isMatch = matchValue.str == caseValue.str;
+                else if (matchValue.type == Value::BOOL) isMatch = matchValue.boolean == caseValue.boolean;
+            }
+            
+            if (isMatch) {
+                matched = true;
+                size_t savedCurrent = current;
+                current = caseBodyStart;
+                while (current < caseBodyEnd && !isAtEnd() && !hasReturned) {
+                    statement();
+                }
+                current = savedCurrent;
+                break;
+            }
+        }
+        
+        // If no match, execute default
+        if (!matched && hasDefault) {
+            size_t savedCurrent = current;
+            current = defaultStart;
+            while (current < defaultEnd && !isAtEnd() && !hasReturned) {
+                statement();
+            }
+            current = savedCurrent;
         }
     }
 
@@ -916,11 +1037,11 @@ private:
                     }
                 }
                 
-                // If val is a string (function name), call it
                 if (val.type == Value::STRING) {
                     val = callFunction(val.str, args);
+                } else if (val.type == Value::LAMBDA) {
+                    val = callLambda(val, args);
                 } else {
-                    // Invalid function call
                     val = Value();
                 }
             } else if (match(TOKEN_LBRACKET)) {
@@ -958,7 +1079,79 @@ private:
         return val;
     }
 
+    Value callLambda(const Value& lambda, const std::vector<Value>& args) {
+        scopes.push_back(lambda.closureCaptures);
+        
+        for (size_t i = 0; i < lambda.lambdaParams.size() && i < args.size(); i++) {
+            scopes.back()[lambda.lambdaParams[i]] = args[i];
+        }
+
+        size_t savedCurrent = current;
+        current = lambda.lambdaBodyStart;
+        hasReturned = false;
+        returnValue = Value();
+
+        while (current < lambda.lambdaBodyEnd && !isAtEnd() && !hasReturned) {
+            statement();
+        }
+
+        Value result = returnValue;
+        hasReturned = false;
+        
+        scopes.pop_back();
+        
+        current = savedCurrent;
+        return result;
+    }
+
     Value callFunction(const std::string& name, const std::vector<Value>& args) {
+        // Higher-order functions
+        if (name == "map") {
+            if (args.size() >= 2 && args[0].type == Value::ARRAY && args[1].type == Value::LAMBDA) {
+                std::vector<Value> result;
+                for (const auto& item : args[0].array) {
+                    std::vector<Value> lambdaArgs = {item};
+                    result.push_back(callLambda(args[1], lambdaArgs));
+                }
+                return Value(result);
+            }
+            return Value();
+        }
+        
+        if (name == "filter") {
+            if (args.size() >= 2 && args[0].type == Value::ARRAY && args[1].type == Value::LAMBDA) {
+                std::vector<Value> result;
+                for (const auto& item : args[0].array) {
+                    std::vector<Value> lambdaArgs = {item};
+                    Value condition = callLambda(args[1], lambdaArgs);
+                    if (condition.type == Value::BOOL && condition.boolean) {
+                        result.push_back(item);
+                    }
+                }
+                return Value(result);
+            }
+            return Value();
+        }
+        
+        if (name == "reduce") {
+            if (args.size() >= 3 && args[0].type == Value::ARRAY && args[2].type == Value::LAMBDA) {
+                Value accumulator = args[1];
+                for (const auto& item : args[0].array) {
+                    std::vector<Value> lambdaArgs = {accumulator, item};
+                    accumulator = callLambda(args[2], lambdaArgs);
+                }
+                return accumulator;
+            }
+            return Value();
+        }
+        
+        if (name == "typeof") {
+            if (args.size() > 0) {
+                return Value(args[0].getType());
+            }
+            return Value("nil");
+        }
+        
         // Standard library functions
         if (name == "len") {
             if (args.size() > 0) {
@@ -1249,6 +1442,55 @@ private:
         }
         if (match(TOKEN_TRUE)) return Value(true);
         if (match(TOKEN_FALSE)) return Value(false);
+        
+        // Lambda expression: |params| => { body } or || => { body }
+        if (match(TOKEN_PIPE)) {
+            Value lambda;
+            lambda.type = Value::LAMBDA;
+            
+            // Check if it's an empty parameter list ||
+            if (peek().type == TOKEN_PIPE) {
+                advance(); // consume second pipe
+            } else {
+                // Parse parameters
+                while (peek().type != TOKEN_PIPE && !isAtEnd()) {
+                    Token param = advance();
+                    lambda.lambdaParams.push_back(param.value);
+                    if (match(TOKEN_COMMA)) {
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+                match(TOKEN_PIPE);
+            }
+            
+            match(TOKEN_ARROW_FAT);
+            match(TOKEN_LBRACE);
+            lambda.lambdaBodyStart = current;
+            
+            int braceCount = 1;
+            size_t bodyEnd = current;
+            while (braceCount > 0 && bodyEnd < tokens.size()) {
+                if (tokens[bodyEnd].type == TOKEN_LBRACE) braceCount++;
+                if (tokens[bodyEnd].type == TOKEN_RBRACE) braceCount--;
+                if (braceCount > 0) bodyEnd++;
+            }
+            lambda.lambdaBodyEnd = bodyEnd;
+            
+            // Capture current scope variables (closure)
+            for (int i = scopes.size() - 1; i >= 0; i--) {
+                for (const auto& var : scopes[i]) {
+                    if (lambda.closureCaptures.find(var.first) == lambda.closureCaptures.end()) {
+                        lambda.closureCaptures[var.first] = var.second;
+                    }
+                }
+            }
+            
+            current = bodyEnd + 1;
+            return lambda;
+        }
+        
         if (match(TOKEN_LBRACKET)) {
             std::vector<Value> arr;
             while (!match(TOKEN_RBRACKET)) {
@@ -1286,7 +1528,6 @@ private:
             }
             
             // Check if it's a function (user-defined or built-in)
-            // Return the name as a string so call() can invoke it
             if (functions.find(name) != functions.end() || isBuiltinFunction(name)) {
                 return Value(name);
             }

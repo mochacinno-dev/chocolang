@@ -1,0 +1,14 @@
+puts "Before match";
+
+let day = 3;
+
+match day {
+    case 3 => {
+        puts "Wednesday";
+    }
+}
+
+puts "After match";
+
+let x = 5;
+puts x;

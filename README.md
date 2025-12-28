@@ -1,6 +1,6 @@
 <div align="center">
 
-# Choco
+<img src="assets/banner-logo.png" alt="Tourmaline Logo" width="400"/>
 
 **A Sweet Programming Language**
 

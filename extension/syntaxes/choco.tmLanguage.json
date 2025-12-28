@@ -105,6 +105,18 @@
         {
           "name": "keyword.operator.arrow.choco",
           "match": "->"
+        },
+        {
+          "name": "keyword.operator.fatarrow.choco",
+          "match": "=>"
+        },
+        {
+          "name": "keyword.operator.range.choco",
+          "match": "\\.\\."
+        },
+        {
+          "name": "keyword.operator.logical.choco",
+          "match": "(&&|\\|\\|)"
         }
       ]
     },
@@ -112,15 +124,15 @@
       "patterns": [
         {
           "name": "support.function.builtin.io.choco",
-          "match": "\\b(puts|print|input)\\b"
+          "match": "\\b(puts|print|println|input|match|case|default|uppercase|lowercase|substr|split|join)\\b"
         },
         {
           "name": "support.function.builtin.conversion.choco",
-          "match": "\\b(str|int|float|bool|type)\\b"
+          "match": "\\b(str|int|float|bool|type|typeof|read_file|write_file|append_file|file_exists)\\b"
         },
         {
           "name": "support.function.builtin.collection.choco",
-          "match": "\\b(len|push|pop|append|insert|remove|clear)\\b"
+          "match": "\\b(len|push|pop|append|insert|remove|clear|try|catch|map|filter|reduce)\\b"
         },
         {
           "name": "support.function.builtin.math.choco",

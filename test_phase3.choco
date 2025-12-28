@@ -1,5 +1,481 @@
 //////////////////////////////////////
 // ChocoLang 3.0.0 - Milky Way
-// Phase / Version 3 Test File
+// Phase 3 Test File
 // Made by Camila "Mocha" Rose
 //////////////////////////////////////
+
+puts "=== ChocoLang 3.0.0 - Milky Way ===";
+puts "";
+
+// ============================================
+// 1. Type System with Inference and typeof
+// ============================================
+puts "=== Type System ===";
+
+let number = 42;
+let text = "Hello";
+let flag = true;
+let list = [1, 2, 3];
+
+puts "Type of number:";
+puts typeof(number);
+
+puts "Type of text:";
+puts typeof(text);
+
+puts "Type of flag:";
+puts typeof(flag);
+
+puts "Type of list:";
+puts typeof(list);
+
+struct Point {
+    x,
+    y
+}
+
+let point = Point { x: 10, y: 20 };
+puts "Type of point:";
+puts typeof(point);
+
+// ============================================
+// 2. Closures and Lambdas
+// ============================================
+puts "";
+puts "=== Closures and Lambdas ===";
+
+// Simple lambda
+let double = |x| => {
+    return x * 2;
+};
+
+puts "Double of 5:";
+puts double(5);
+
+// Lambda with multiple parameters
+let add = |a, b| => {
+    return a + b;
+};
+
+puts "Add 10 + 20:";
+puts add(10, 20);
+
+// Closure capturing variables
+let multiplier = 3;
+let multiply_by = |x| => {
+    return x * multiplier;
+};
+
+puts "Multiply 7 by 3:";
+puts multiply_by(7);
+
+// Lambda with no parameters - use underscore as placeholder
+let greet = |_| => {
+    return "Hello from lambda!";
+};
+
+puts greet(0);
+
+// ============================================
+// 3. Pattern Matching
+// ============================================
+puts "";
+puts "=== Pattern Matching ===";
+
+let day = 3;
+
+match day {
+    case 1 => {
+        puts "Monday";
+    }
+    case 2 => {
+        puts "Tuesday";
+    }
+    case 3 => {
+        puts "Wednesday";
+    }
+    case 4 => {
+        puts "Thursday";
+    }
+    case 5 => {
+        puts "Friday";
+    }
+    default => {
+        puts "Weekend!";
+    }
+}
+
+// Pattern matching with strings
+let color = "red";
+
+match color {
+    case "red" => {
+        puts "Stop";
+    }
+    case "yellow" => {
+        puts "Caution";
+    }
+    case "green" => {
+        puts "Go";
+    }
+    default => {
+        puts "Unknown color";
+    }
+}
+
+// Pattern matching with calculations
+let score = 85;
+let grade = 0;
+
+match score {
+    case 90 => {
+        grade = 4;
+    }
+    case 80 => {
+        grade = 3;
+    }
+    case 70 => {
+        grade = 2;
+    }
+    default => {
+        grade = 1;
+    }
+}
+
+puts "Grade:";
+puts grade;
+
+// ============================================
+// 4. Higher-Order Functions with Lambdas
+// ============================================
+puts "";
+puts "=== Higher-Order Functions ===";
+
+let numbers = [1, 2, 3, 4, 5];
+
+// Map: transform each element
+let doubled = map(numbers, |x| => {
+    return x * 2;
+});
+
+puts "Doubled numbers:";
+puts doubled;
+
+// Filter: keep only elements that match condition
+let evens = filter(numbers, |x| => {
+    return x % 2 == 0;
+});
+
+puts "Even numbers:";
+puts evens;
+
+// Reduce: combine elements into single value
+let sum = reduce(numbers, 0, |acc, x| => {
+    return acc + x;
+});
+
+puts "Sum of numbers:";
+puts sum;
+
+// ============================================
+// 5. Advanced Lambda Examples
+// ============================================
+puts "";
+puts "=== Advanced Lambdas ===";
+
+// Lambda that returns a lambda
+fn create_adder(n) {
+    let adder = |x| => {
+        return x + n;
+    };
+    return adder;
+}
+
+let add5 = create_adder(5);
+puts "Add 5 to 10:";
+puts add5(10);
+
+let add100 = create_adder(100);
+puts "Add 100 to 50:";
+puts add100(50);
+
+// ============================================
+// 6. Complex Higher-Order Function Usage
+// ============================================
+puts "";
+puts "=== Complex HOF Examples ===";
+
+let data = [10, 15, 20, 25, 30, 35, 40];
+
+// Chain operations: filter then map
+let filtered = filter(data, |x| => {
+    return x >= 20;
+});
+
+let result = map(filtered, |x| => {
+    return x / 5;
+});
+
+puts "Filtered and transformed:";
+puts result;
+
+// ============================================
+// 7. Pattern Matching with Functions
+// ============================================
+puts "";
+puts "=== Pattern Matching in Functions ===";
+
+fn get_message(code) {
+    let msg = "";
+    match code {
+        case 200 => {
+            msg = "OK";
+        }
+        case 404 => {
+            msg = "Not Found";
+        }
+        case 500 => {
+            msg = "Server Error";
+        }
+        default => {
+            msg = "Unknown";
+        }
+    }
+    return msg;
+}
+
+puts "Status 200:";
+puts get_message(200);
+
+puts "Status 404:";
+puts get_message(404);
+
+puts "Status 999:";
+puts get_message(999);
+
+// ============================================
+// 8. Lambda with Arrays
+// ============================================
+puts "";
+puts "=== Lambdas with Arrays ===";
+
+let words = ["hello", "world", "choco", "lang"];
+
+let upper_words = map(words, |w| => {
+    return uppercase(w);
+});
+
+puts "Uppercase words:";
+puts upper_words;
+
+let long_words = filter(words, |w| => {
+    return len(w) > 4;
+});
+
+puts "Long words (>4 chars):";
+puts long_words;
+
+// ============================================
+// 9. Closures with State
+// ============================================
+puts "";
+puts "=== Closures with State ===";
+
+fn counter() {
+    let count = 0;
+    let increment = |_| => {
+        count = count + 1;
+        return count;
+    };
+    return increment;
+}
+
+let c1 = counter();
+puts "Counter 1:";
+puts c1(0);
+puts c1(0);
+puts c1(0);
+
+// ============================================
+// 10. Type Inference Examples
+// ============================================
+puts "";
+puts "=== Type Inference ===";
+
+let inferred_num = 100;
+let inferred_str = "auto";
+let inferred_arr = [true, false, true];
+
+puts "Inferred types:";
+puts typeof(inferred_num);
+puts typeof(inferred_str);
+puts typeof(inferred_arr);
+
+// ============================================
+// 11. Advanced Pattern Matching
+// ============================================
+puts "";
+puts "=== Advanced Pattern Matching ===";
+
+fn describe_number(n) {
+    match n {
+        case 0 => {
+            puts "Zero";
+        }
+        case 1 => {
+            puts "One";
+        }
+        case 2 => {
+            puts "Two";
+        }
+        default => {
+            puts "Many";
+        }
+    }
+}
+
+describe_number(0);
+describe_number(1);
+describe_number(42);
+
+// ============================================
+// 12. Combining All Features
+// ============================================
+puts "";
+puts "=== Combined Example ===";
+
+struct Person {
+    name,
+    age,
+    city
+}
+
+let people = [
+    Person { name: "Alice", age: 30, city: "NYC" },
+    Person { name: "Bob", age: 25, city: "LA" },
+    Person { name: "Charlie", age: 35, city: "SF" }
+];
+
+// Filter people over 28
+let adults = filter(people, |p| => {
+    return p.age > 28;
+});
+
+puts "Adults over 28:";
+let idx = 0;
+while idx < len(adults) {
+    puts adults[idx].name;
+    idx = idx + 1;
+}
+
+// Get all ages
+let ages = map(people, |p| => {
+    return p.age;
+});
+
+puts "All ages:";
+puts ages;
+
+// Sum of all ages
+let total_age = reduce(ages, 0, |sum, age| => {
+    return sum + age;
+});
+
+puts "Total age:";
+puts total_age;
+
+// Average age
+let avg_age = total_age / len(people);
+puts "Average age:";
+puts avg_age;
+
+// ============================================
+// 13. Lambda Factorial
+// ============================================
+puts "";
+puts "=== Lambda Factorial ===";
+
+fn make_factorial() {
+    let fact = |n| => {
+        let result = 1;
+        let i = 1;
+        while i <= n {
+            result = result * i;
+            i = i + 1;
+        }
+        return result;
+    };
+    return fact;
+}
+
+let factorial = make_factorial();
+puts "Factorial of 5:";
+puts factorial(5);
+
+puts "Factorial of 7:";
+puts factorial(7);
+
+// ============================================
+// 14. Pattern Match Calculator
+// ============================================
+puts "";
+puts "=== Pattern Match Calculator ===";
+
+fn calculate(operation, a, b) {
+    let result = 0;
+    match operation {
+        case "add" => {
+            result = a + b;
+        }
+        case "sub" => {
+            result = a - b;
+        }
+        case "mul" => {
+            result = a * b;
+        }
+        case "div" => {
+            result = a / b;
+        }
+        default => {
+            result = 0;
+        }
+    }
+    return result;
+}
+
+puts "10 + 5:";
+puts calculate("add", 10, 5);
+
+puts "10 * 3:";
+puts calculate("mul", 10, 3);
+
+// ============================================
+// 15. Type-Safe Operations
+// ============================================
+puts "";
+puts "=== Type-Safe Operations ===";
+
+fn safe_divide(a, b) {
+    let type_a = typeof(a);
+    let type_b = typeof(b);
+    
+    if type_a == "number" && type_b == "number" {
+        if b == 0 {
+            return "Error: Division by zero";
+        } else {
+            return str(a / b);
+        }
+    } else {
+        return "Error: Invalid types";
+    }
+}
+
+puts "20 / 4:";
+puts safe_divide(20, 4);
+
+puts "20 / 0:";
+puts safe_divide(20, 0);
+
+puts "";
+puts "=== Phase 3 Complete! ===";
+puts "Features: Type System, Closures/Lambdas, Pattern Matching, HOF";
