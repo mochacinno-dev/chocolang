@@ -21,52 +21,70 @@ puts "It supports functions, arrays, loops, and more advanced features.";
 puts "<=== ROADMAP ===>";
 
 puts "<=== Version 0.1.0 - Chocolate Delight ===>";
-puts "1. Basic syntax and structure";
-puts "2. Variables and data types";
-puts "3. Control flow (if/else, loops)";
+puts "1. Basic syntax and structure - DONE";
+puts "2. Variables and data types - DONE";
+puts "3. Control flow (if/else, loops) - DONE";
 
 puts "";
 
 puts "<=== Version 0.1.5 - Waffle Crunch Patch";
-puts "4. Functions (declaration, parameters, return values)";
-puts "5. Arrays and basic operations";
-puts "6. Basic I/O (print to console)";
-puts "7. Comments";
+puts "4. Functions (declaration, parameters, return values) - DONE";
+puts "5. Arrays and basic operations on them - DONE";
+puts "6. Basic I/O (print to console) - DONE";
+puts "7. Comments - DONE";
 
 puts "";
 
 puts "<=== Version 0.2.0 - Sweet Wonderland";
-puts "6. Structs/custom types";
-puts "7. Module system (import/export)";
-puts "8. File I/O";
-puts "9. Error handling (try/catch)";
-puts "10. Standard library basics";
+puts "6. Structs/custom types - DONE";
+puts "7. Module system (import/export) - DONE";
+puts "8. File I/O - DONE";
+puts "9. Error handling (try/catch) - DONE";
+puts "10. Standard library basics - DONE";
 
 puts "";
 
 puts "<=== Version 0.3.0 - Milky Way";
-puts "11. Type system with inference";
-puts "12. Closures and lambdas";
-puts "13. Async/await";
+puts "11. Type system with inference - DONE";
+puts "12. Closures and lambdas - DONE";
+puts "13. Async/await - DONE";
 
 puts "";    
 
 puts "<=== Version 0.3.5 - Caramel Swirl Patch";
-puts "14. Pattern matching";
-puts "15. Generics";
+puts "14. Pattern matching - DONE";
+puts "15. Generics - DONE";
 
 puts "";
 
 puts "<=== Version 0.4.0 - Cocoa Dream";
-puts "16. LSP for IDE support";
-puts "17. REPL";
-puts "18. User Input Functionality";
+puts "17. REPL - DONE";
+
+puts "";
+
+puts "<=== Version 0.4.5 - Pistachio Twist Patch";
+puts "18. Performance optimizations";
+puts "19. Enhanced error messages";
+
+puts "";
+
+puts "<=== Version 0.5.0 - Nutty Nougat";
+puts "20. Performance optimizations";
+puts "";
+
+puts "<=== Version 0.5.5 - Hazelnut Heaven Patch ===>";
+puts "21. Testing framework";
+puts "";
+
+puts "<=== Version 0.6.0 - Almond Amour ===>";
+puts "22. Package manager";
+puts "";
+
+puts "<=== Version 0.6.5 - Macadamia Magic Patch ===>";
+puts "23. Stability improvements";
 
 puts "";
 
 puts "<=== Version 1.0.0 - Choco Crunch ===>";
-puts "19. Testing framework";
-puts "20. Documentation generator";
-puts "21. Package manager";
-puts "22. Performance optimizations";
-puts "23. Interpreted -> Compiled transition";
+puts "24. Documentation generator";
+puts "25. Interpreted -> Compiled transition";

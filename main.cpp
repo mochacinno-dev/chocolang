@@ -1,5 +1,5 @@
 //////////////////////////////////////
-// ChocoLang 0.3.5 - Caramel Swirl Patch
+// ChocoLang 3.0.0 - Milky Way
 // CoffeeShop Development
 // Made by Camila "Mocha" Rose
 //////////////////////////////////////
@@ -341,22 +341,25 @@ struct ChocoException {
 
 // Interpreter
 class Interpreter {
+public:
     std::map<std::string, Value> globalVars;
     std::vector<std::map<std::string, Value>> scopes;
     std::map<std::string, Function> functions;
     std::map<std::string, StructDef> structDefs;
     std::vector<Token> tokens;
-    size_t current = 0;
-    bool inFunction = false;
-    bool hasReturned = false;
+    size_t current;
+    
+    bool inFunction;
+    bool hasReturned;
     Value returnValue;
-    bool shouldBreak = false;
-    bool shouldContinue = false;
-    bool inTryCatch = false;
+    bool shouldBreak;
+    bool shouldContinue;
+    bool inTryCatch;
     std::string currentException;
 
-public:
-    Interpreter(const std::vector<Token>& toks) : tokens(toks) {
+    Interpreter(const std::vector<Token>& toks) : tokens(toks), current(0), 
+        inFunction(false), hasReturned(false), shouldBreak(false), 
+        shouldContinue(false), inTryCatch(false) {
         scopes.push_back(std::map<std::string, Value>());
         srand(time(nullptr));
     }
@@ -366,9 +369,11 @@ public:
             statement();
         }
     }
+    
+    bool isAtEnd() { 
+        return tokens.empty() || current >= tokens.size() || tokens[current].type == TOKEN_EOF; 
+    }
 
-private:
-    bool isAtEnd() { return tokens[current].type == TOKEN_EOF; }
     Token peek() { return tokens[current]; }
     Token advance() { return tokens[current++]; }
     bool match(TokenType type) {
@@ -1545,8 +1550,122 @@ private:
 };
 
 int main(int argc, char* argv[]) {
+    // REPL mode (no arguments)
+    if (argc == 1) {
+        std::cout << "======================================" << std::endl;
+        std::cout << "  ChocoLang 0.4.0 - Cocoa Dream" << std::endl;
+        std::cout << "  Interactive REPL" << std::endl;
+        std::cout << "  Type 'exit' or 'quit' to leave" << std::endl;
+        std::cout << "======================================" << std::endl;
+        std::cout << std::endl;
+        
+        std::vector<Token> emptyTokens;
+        Interpreter repl(emptyTokens);
+        std::string line;
+        int lineNumber = 1;
+        
+        while (true) {
+            std::cout << "choco:" << lineNumber << "> ";
+            
+            if (!std::getline(std::cin, line)) {
+                std::cout << std::endl;
+                break;
+            }
+            
+            // Trim whitespace
+            line.erase(0, line.find_first_not_of(" \t\n\r"));
+            line.erase(line.find_last_not_of(" \t\n\r") + 1);
+            
+            // Check for exit commands
+            if (line == "exit" || line == "quit") {
+                std::cout << "Goodbye!" << std::endl;
+                break;
+            }
+            
+            // Skip empty lines
+            if (line.empty()) {
+                continue;
+            }
+            
+            // Check for special commands
+            if (line == "help") {
+                std::cout << "ChocoLang REPL Commands:" << std::endl;
+                std::cout << "  exit, quit     - Exit the REPL" << std::endl;
+                std::cout << "  help           - Show this help message" << std::endl;
+                std::cout << "  clear          - Clear all variables and functions" << std::endl;
+                std::cout << "  vars           - Show all defined variables" << std::endl;
+                std::cout << "  funcs          - Show all defined functions" << std::endl;
+                std::cout << std::endl;
+                std::cout << "Examples:" << std::endl;
+                std::cout << "  let x = 10;" << std::endl;
+                std::cout << "  puts x + 5;" << std::endl;
+                std::cout << "  fn greet(name) { return \"Hello, \" + name; }" << std::endl;
+                std::cout << "  puts greet(\"World\");" << std::endl;
+                lineNumber++;
+                continue;
+            }
+            
+            if (line == "clear") {
+                std::vector<Token> emptyTokens2;
+                repl = Interpreter(emptyTokens2);
+                std::cout << "Environment cleared." << std::endl;
+                lineNumber = 1;
+                continue;
+            }
+            
+            if (line == "vars") {
+                std::cout << "Variables: (feature coming soon)" << std::endl;
+                lineNumber++;
+                continue;
+            }
+            
+            if (line == "funcs") {
+                std::cout << "Functions: (feature coming soon)" << std::endl;
+                lineNumber++;
+                continue;
+            }
+            
+            // Add semicolon if missing for single statements
+            if (line.back() != ';' && line.back() != '}') {
+                line += ";";
+            }
+            
+            try {
+                Lexer lexer(line);
+                std::vector<Token> tokens = lexer.tokenize();
+                
+                // Save interpreter state
+                size_t savedCurrent = repl.current;
+                std::vector<Token> savedTokens = repl.tokens;
+                
+                // Execute the line
+                repl.tokens = tokens;
+                repl.current = 0;
+                
+                while (!repl.isAtEnd()) {
+                    repl.statement();
+                }
+                
+                // Restore for next iteration
+                repl.tokens = savedTokens;
+                repl.current = savedCurrent;
+                
+            } catch (const std::exception& e) {
+                std::cerr << "Error: " << e.what() << std::endl;
+            } catch (...) {
+                std::cerr << "Unknown error occurred" << std::endl;
+            }
+            
+            lineNumber++;
+        }
+        
+        return 0;
+    }
+    
+    // File execution mode
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <file.choco>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [file.choco]" << std::endl;
+        std::cerr << "       " << argv[0] << "              (for REPL mode)" << std::endl;
         return 1;
     }
 
