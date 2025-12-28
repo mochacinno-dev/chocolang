@@ -64,6 +64,10 @@ puts "";
 
 puts "<=== Version 0.4.5 - Pistachio Twist Patch";
 puts "18. Performance optimizations - DONE";
+
+puts "";
+
+puts "<=== Version 0.4.8 - Mocha Madness Mini-Patch ===>";
 puts "19. Enhanced error messages";
 
 puts "";

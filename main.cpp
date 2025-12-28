@@ -1,5 +1,5 @@
 //////////////////////////////////////
-// ChocoLang 0.4.5 - Pistachio Twist Patch
+// ChocoLang 0.4.8 - Mocha Madness Mini-Patch
 // CoffeeShop Development
 // Made by Camila "Mocha" Rose
 //////////////////////////////////////
@@ -1571,11 +1571,11 @@ const std::unordered_map<std::string, bool> Interpreter::builtinFunctions = {
 int main(int argc, char* argv[]) {
     // REPL mode (no arguments)
     if (argc == 1) {
-        std::cout << "======================================" << std::endl;
-        std::cout << "  ChocoLang 0.4.0 - Cocoa Dream" << std::endl;
-        std::cout << "  Interactive REPL (Optimized)" << std::endl;
+        std::cout << "===============================================" << std::endl;
+        std::cout << "  ChocoLang 0.4.8 - Mocha Madness Mini-Patch" << std::endl;
+        std::cout << "  Interactive REPL (REL-0.1.1)" << std::endl;
         std::cout << "  Type 'exit' or 'quit' to leave" << std::endl;
-        std::cout << "======================================" << std::endl;
+        std::cout << "===============================================" << std::endl;
         std::cout << std::endl;
         
         std::vector<Token> emptyTokens;
