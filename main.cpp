@@ -1,5 +1,5 @@
 //////////////////////////////////////
-// ChocoLang 0.4.0 - Cocoa Dream
+// ChocoLang 0.4.5 - Pistachio Twist Patch
 // CoffeeShop Development
 // Made by Camila "Mocha" Rose
 //////////////////////////////////////
@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <memory>
 #include <fstream>
 #include <sstream>
@@ -46,12 +47,17 @@ class Lexer {
     std::string source;
     size_t pos = 0;
     int line = 1;
+    
+    // Keyword lookup table for O(1) keyword identification
+    static const std::unordered_map<std::string, TokenType> keywords;
 
 public:
     Lexer(const std::string& src) : source(src) {}
 
     std::vector<Token> tokenize() {
         std::vector<Token> tokens;
+        tokens.reserve(source.length() / 4); // Preallocate space
+        
         while (pos < source.length()) {
             skipWhitespace();
             if (pos >= source.length()) break;
@@ -62,15 +68,16 @@ public:
             }
 
             Token tok = nextToken();
-            tokens.push_back(tok);
+            tokens.push_back(std::move(tok));
         }
         tokens.push_back({TOKEN_EOF, "", line});
+        tokens.shrink_to_fit(); // Release unused capacity
         return tokens;
     }
 
 private:
     void skipWhitespace() {
-        while (pos < source.length() && std::isspace(source[pos])) {
+        while (pos < source.length() && std::isspace(static_cast<unsigned char>(source[pos]))) {
             if (source[pos] == '\n') line++;
             pos++;
         }
@@ -83,8 +90,8 @@ private:
     Token nextToken() {
         char c = source[pos];
 
-        if (std::isdigit(c)) return number();
-        if (std::isalpha(c) || c == '_') return identifier();
+        if (std::isdigit(static_cast<unsigned char>(c))) return number();
+        if (std::isalpha(static_cast<unsigned char>(c)) || c == '_') return identifier();
         if (c == '"') return string();
 
         pos++;
@@ -159,16 +166,17 @@ private:
 
     Token number() {
         std::string num;
+        num.reserve(16); // Preallocate for typical numbers
         bool hasDot = false;
         
         while (pos < source.length()) {
-            if (std::isdigit(source[pos])) {
+            if (std::isdigit(static_cast<unsigned char>(source[pos]))) {
                 num += source[pos++];
             } else if (source[pos] == '.' && !hasDot) {
                 if (pos + 1 < source.length() && source[pos + 1] == '.') {
                     break;
                 }
-                if (pos + 1 < source.length() && std::isdigit(source[pos + 1])) {
+                if (pos + 1 < source.length() && std::isdigit(static_cast<unsigned char>(source[pos + 1]))) {
                     hasDot = true;
                     num += source[pos++];
                 } else {
@@ -184,35 +192,17 @@ private:
 
     Token identifier() {
         std::string id;
-        while (pos < source.length() && (std::isalnum(source[pos]) || source[pos] == '_')) {
+        id.reserve(32); // Preallocate for typical identifiers
+        
+        while (pos < source.length() && (std::isalnum(static_cast<unsigned char>(source[pos])) || source[pos] == '_')) {
             id += source[pos++];
         }
 
-        if (id == "let") return {TOKEN_LET, id, line};
-        if (id == "fn") return {TOKEN_FN, id, line};
-        if (id == "if") return {TOKEN_IF, id, line};
-        if (id == "else") return {TOKEN_ELSE, id, line};
-        if (id == "while") return {TOKEN_WHILE, id, line};
-        if (id == "for") return {TOKEN_FOR, id, line};
-        if (id == "in") return {TOKEN_IN, id, line};
-        if (id == "return") return {TOKEN_RETURN, id, line};
-        if (id == "puts") return {TOKEN_PUTS, id, line};
-        if (id == "true") return {TOKEN_TRUE, id, line};
-        if (id == "false") return {TOKEN_FALSE, id, line};
-        if (id == "struct") return {TOKEN_STRUCT, id, line};
-        if (id == "impl") return {TOKEN_IMPL, id, line};
-        if (id == "import") return {TOKEN_IMPORT, id, line};
-        if (id == "from") return {TOKEN_FROM, id, line};
-        if (id == "try") return {TOKEN_TRY, id, line};
-        if (id == "catch") return {TOKEN_CATCH, id, line};
-        if (id == "throw") return {TOKEN_THROW, id, line};
-        if (id == "break") return {TOKEN_BREAK, id, line};
-        if (id == "continue") return {TOKEN_CONTINUE, id, line};
-        if (id == "match") return {TOKEN_MATCH, id, line};
-        if (id == "case") return {TOKEN_CASE, id, line};
-        if (id == "default") return {TOKEN_DEFAULT, id, line};
-        if (id == "async") return {TOKEN_ASYNC, id, line};
-        if (id == "await") return {TOKEN_AWAIT, id, line};
+        // Use hash table lookup instead of if-else chain
+        auto it = keywords.find(id);
+        if (it != keywords.end()) {
+            return {it->second, id, line};
+        }
 
         return {TOKEN_IDENTIFIER, id, line};
     }
@@ -220,6 +210,8 @@ private:
     Token string() {
         pos++; // skip opening "
         std::string str;
+        str.reserve(64); // Preallocate for typical strings
+        
         while (pos < source.length() && source[pos] != '"') {
             if (source[pos] == '\\' && pos + 1 < source.length()) {
                 pos++;
@@ -243,6 +235,17 @@ private:
     }
 };
 
+// Initialize keyword lookup table
+const std::unordered_map<std::string, TokenType> Lexer::keywords = {
+    {"let", TOKEN_LET}, {"fn", TOKEN_FN}, {"if", TOKEN_IF}, {"else", TOKEN_ELSE},
+    {"while", TOKEN_WHILE}, {"for", TOKEN_FOR}, {"in", TOKEN_IN}, {"return", TOKEN_RETURN},
+    {"puts", TOKEN_PUTS}, {"true", TOKEN_TRUE}, {"false", TOKEN_FALSE}, {"struct", TOKEN_STRUCT},
+    {"impl", TOKEN_IMPL}, {"import", TOKEN_IMPORT}, {"from", TOKEN_FROM}, {"try", TOKEN_TRY},
+    {"catch", TOKEN_CATCH}, {"throw", TOKEN_THROW}, {"break", TOKEN_BREAK}, {"continue", TOKEN_CONTINUE},
+    {"match", TOKEN_MATCH}, {"case", TOKEN_CASE}, {"default", TOKEN_DEFAULT}, {"async", TOKEN_ASYNC},
+    {"await", TOKEN_AWAIT}
+};
+
 // Forward declarations
 class Interpreter;
 
@@ -253,14 +256,14 @@ struct Value {
     std::string str;
     bool boolean;
     std::vector<Value> array;
-    std::map<std::string, Value> structFields;
+    std::unordered_map<std::string, Value> structFields; // Changed to unordered_map
     std::string structType;
     
     // Lambda/closure support
     std::vector<std::string> lambdaParams;
     size_t lambdaBodyStart;
     size_t lambdaBodyEnd;
-    std::map<std::string, Value> closureCaptures;
+    std::unordered_map<std::string, Value> closureCaptures; // Changed to unordered_map
 
     Value() : type(NIL), num(0), boolean(false), lambdaBodyStart(0), lambdaBodyEnd(0) {}
     Value(double n) : type(NUMBER), num(n), boolean(false), lambdaBodyStart(0), lambdaBodyEnd(0) {}
@@ -342,10 +345,10 @@ struct ChocoException {
 // Interpreter
 class Interpreter {
 public:
-    std::map<std::string, Value> globalVars;
-    std::vector<std::map<std::string, Value>> scopes;
-    std::map<std::string, Function> functions;
-    std::map<std::string, StructDef> structDefs;
+    std::unordered_map<std::string, Value> globalVars; // Changed to unordered_map
+    std::vector<std::unordered_map<std::string, Value>> scopes; // Changed to unordered_map
+    std::unordered_map<std::string, Function> functions; // Changed to unordered_map
+    std::unordered_map<std::string, StructDef> structDefs; // Changed to unordered_map
     std::vector<Token> tokens;
     size_t current;
     
@@ -356,11 +359,15 @@ public:
     bool shouldContinue;
     bool inTryCatch;
     std::string currentException;
+    
+    // Cache for builtin function lookup
+    static const std::unordered_map<std::string, bool> builtinFunctions;
 
     Interpreter(const std::vector<Token>& toks) : tokens(toks), current(0), 
         inFunction(false), hasReturned(false), shouldBreak(false), 
         shouldContinue(false), inTryCatch(false) {
-        scopes.push_back(std::map<std::string, Value>());
+        scopes.push_back(std::unordered_map<std::string, Value>());
+        scopes.reserve(16); // Preallocate for typical recursion depth
         srand(time(nullptr));
     }
 
@@ -370,13 +377,13 @@ public:
         }
     }
     
-    bool isAtEnd() { 
+    inline bool isAtEnd() const { 
         return tokens.empty() || current >= tokens.size() || tokens[current].type == TOKEN_EOF; 
     }
 
-    Token peek() { return tokens[current]; }
-    Token advance() { return tokens[current++]; }
-    bool match(TokenType type) {
+    inline Token peek() const { return tokens[current]; }
+    inline Token advance() { return tokens[current++]; }
+    inline bool match(TokenType type) {
         if (peek().type == type) {
             advance();
             return true;
@@ -384,16 +391,8 @@ public:
         return false;
     }
 
-    bool isBuiltinFunction(const std::string& name) {
-        return name == "len" || name == "push" || name == "pop" ||
-               name == "sqrt" || name == "pow" || name == "abs" ||
-               name == "floor" || name == "ceil" || name == "round" ||
-               name == "min" || name == "max" || name == "random" || name == "random_int" ||
-               name == "str" || name == "int" || name == "float" ||
-               name == "uppercase" || name == "lowercase" || name == "substr" ||
-               name == "split" || name == "join" ||
-               name == "read_file" || name == "write_file" || name == "append_file" || name == "file_exists" ||
-               name == "map" || name == "filter" || name == "reduce" || name == "typeof";
+    inline bool isBuiltinFunction(const std::string& name) const {
+        return builtinFunctions.find(name) != builtinFunctions.end();
     }
 
     void setVariable(const std::string& name, const Value& val) {
@@ -408,12 +407,14 @@ public:
 
     Value getVariable(const std::string& name) {
         for (int i = scopes.size() - 1; i >= 0; i--) {
-            if (scopes[i].find(name) != scopes[i].end()) {
-                return scopes[i][name];
+            auto it = scopes[i].find(name);
+            if (it != scopes[i].end()) {
+                return it->second;
             }
         }
-        if (globalVars.find(name) != globalVars.end()) {
-            return globalVars[name];
+        auto it = globalVars.find(name);
+        if (it != globalVars.end()) {
+            return it->second;
         }
         return Value();
     }
@@ -478,7 +479,7 @@ public:
         std::vector<std::string> params;
         while (!match(TOKEN_RPAREN)) {
             Token param = advance();
-            params.push_back(param.value);
+            params.push_back(std::move(param.value));
             if (!match(TOKEN_COMMA)) {
                 match(TOKEN_RPAREN);
                 break;
@@ -496,7 +497,7 @@ public:
         }
         size_t bodyEnd = current - 1;
 
-        functions[name.value] = {params, bodyStart, bodyEnd};
+        functions[name.value] = {std::move(params), bodyStart, bodyEnd};
     }
 
     void structDeclaration() {
@@ -506,14 +507,14 @@ public:
         std::vector<std::string> fields;
         while (!match(TOKEN_RBRACE)) {
             Token field = advance();
-            fields.push_back(field.value);
+            fields.push_back(std::move(field.value));
             if (!match(TOKEN_COMMA)) {
                 match(TOKEN_RBRACE);
                 break;
             }
         }
         
-        structDefs[name.value] = {fields};
+        structDefs[name.value] = {std::move(fields)};
     }
 
     void importStatement() {
@@ -535,16 +536,16 @@ public:
         std::vector<Token> moduleTokens = lexer.tokenize();
         
         size_t savedCurrent = current;
-        std::vector<Token> savedTokens = tokens;
+        std::vector<Token> savedTokens = std::move(tokens);
         
-        tokens = moduleTokens;
+        tokens = std::move(moduleTokens);
         current = 0;
         
         while (!isAtEnd()) {
             statement();
         }
         
-        tokens = savedTokens;
+        tokens = std::move(savedTokens);
         current = savedCurrent;
     }
 
@@ -581,7 +582,7 @@ public:
         
         current = tryStart;
         inTryCatch = true;
-        currentException = "";
+        currentException.clear();
         
         while (current < tryEnd && !hasReturned && currentException.empty()) {
             statement();
@@ -590,7 +591,7 @@ public:
         inTryCatch = false;
         
         if (!currentException.empty()) {
-            scopes.push_back(std::map<std::string, Value>());
+            scopes.push_back(std::unordered_map<std::string, Value>());
             setVariable(errorVar.value, Value(currentException));
             current = catchStart;
             
@@ -599,7 +600,7 @@ public:
             }
             
             scopes.pop_back();
-            currentException = "";
+            currentException.clear();
         }
         
         current = catchEnd + 1;
@@ -625,6 +626,7 @@ public:
         
         // Parse and store all cases first
         std::vector<std::pair<Value, std::pair<size_t, size_t>>> cases;
+        cases.reserve(8); // Preallocate for typical match statements
         size_t defaultStart = 0, defaultEnd = 0;
         bool hasDefault = false;
         
@@ -643,7 +645,7 @@ public:
                     if (braceCount > 0) caseBodyEnd++;
                 }
                 
-                cases.push_back({caseValue, {caseBodyStart, caseBodyEnd}});
+                cases.push_back({std::move(caseValue), {caseBodyStart, caseBodyEnd}});
                 current = caseBodyEnd + 1;
                 
             } else if (match(TOKEN_DEFAULT)) {
@@ -672,7 +674,7 @@ public:
         
         // Now execute the matching case
         for (const auto& caseItem : cases) {
-            Value caseValue = caseItem.first;
+            const Value& caseValue = caseItem.first;
             size_t caseBodyStart = caseItem.second.first;
             size_t caseBodyEnd = caseItem.second.second;
             
@@ -1070,8 +1072,9 @@ public:
             } else if (match(TOKEN_DOT)) {
                 Token field = advance();
                 if (val.type == Value::STRUCT) {
-                    if (val.structFields.find(field.value) != val.structFields.end()) {
-                        val = val.structFields[field.value];
+                    auto it = val.structFields.find(field.value);
+                    if (it != val.structFields.end()) {
+                        val = it->second;
                     } else {
                         val = Value();
                     }
@@ -1114,6 +1117,7 @@ public:
         if (name == "map") {
             if (args.size() >= 2 && args[0].type == Value::ARRAY && args[1].type == Value::LAMBDA) {
                 std::vector<Value> result;
+                result.reserve(args[0].array.size());
                 for (const auto& item : args[0].array) {
                     std::vector<Value> lambdaArgs = {item};
                     result.push_back(callLambda(args[1], lambdaArgs));
@@ -1395,13 +1399,14 @@ public:
         }
 
         // User-defined functions
-        if (functions.find(name) == functions.end()) {
+        auto it = functions.find(name);
+        if (it == functions.end()) {
             return Value();
         }
 
-        Function& func = functions[name];
+        Function& func = it->second;
         
-        scopes.push_back(std::map<std::string, Value>());
+        scopes.push_back(std::unordered_map<std::string, Value>());
         
         for (size_t i = 0; i < func.params.size() && i < args.size(); i++) {
             scopes.back()[func.params[i]] = args[i];
@@ -1460,7 +1465,7 @@ public:
                 // Parse parameters
                 while (peek().type != TOKEN_PIPE && !isAtEnd()) {
                     Token param = advance();
-                    lambda.lambdaParams.push_back(param.value);
+                    lambda.lambdaParams.push_back(std::move(param.value));
                     if (match(TOKEN_COMMA)) {
                         continue;
                     } else {
@@ -1511,7 +1516,8 @@ public:
             std::string name = tokens[current - 1].value;
             
             // Check if it's a struct constructor
-            if (structDefs.find(name) != structDefs.end() && peek().type == TOKEN_LBRACE) {
+            auto structIt = structDefs.find(name);
+            if (structIt != structDefs.end() && peek().type == TOKEN_LBRACE) {
                 match(TOKEN_LBRACE);
                 Value structVal;
                 structVal.type = Value::STRUCT;
@@ -1521,7 +1527,7 @@ public:
                     Token fieldName = advance();
                     match(TOKEN_COLON);
                     Value fieldValue = expression();
-                    structVal.structFields[fieldName.value] = fieldValue;
+                    structVal.structFields[fieldName.value] = std::move(fieldValue);
                     
                     if (!match(TOKEN_COMMA)) {
                         match(TOKEN_RBRACE);
@@ -1549,12 +1555,25 @@ public:
     }
 };
 
+// Initialize builtin functions lookup table
+const std::unordered_map<std::string, bool> Interpreter::builtinFunctions = {
+    {"len", true}, {"push", true}, {"pop", true},
+    {"sqrt", true}, {"pow", true}, {"abs", true},
+    {"floor", true}, {"ceil", true}, {"round", true},
+    {"min", true}, {"max", true}, {"random", true}, {"random_int", true},
+    {"str", true}, {"int", true}, {"float", true},
+    {"uppercase", true}, {"lowercase", true}, {"substr", true},
+    {"split", true}, {"join", true},
+    {"read_file", true}, {"write_file", true}, {"append_file", true}, {"file_exists", true},
+    {"map", true}, {"filter", true}, {"reduce", true}, {"typeof", true}
+};
+
 int main(int argc, char* argv[]) {
     // REPL mode (no arguments)
     if (argc == 1) {
         std::cout << "======================================" << std::endl;
         std::cout << "  ChocoLang 0.4.0 - Cocoa Dream" << std::endl;
-        std::cout << "  Interactive REPL" << std::endl;
+        std::cout << "  Interactive REPL (Optimized)" << std::endl;
         std::cout << "  Type 'exit' or 'quit' to leave" << std::endl;
         std::cout << "======================================" << std::endl;
         std::cout << std::endl;
@@ -1636,10 +1655,10 @@ int main(int argc, char* argv[]) {
                 
                 // Save interpreter state
                 size_t savedCurrent = repl.current;
-                std::vector<Token> savedTokens = repl.tokens;
+                std::vector<Token> savedTokens = std::move(repl.tokens);
                 
                 // Execute the line
-                repl.tokens = tokens;
+                repl.tokens = std::move(tokens);
                 repl.current = 0;
                 
                 while (!repl.isAtEnd()) {
@@ -1647,7 +1666,7 @@ int main(int argc, char* argv[]) {
                 }
                 
                 // Restore for next iteration
-                repl.tokens = savedTokens;
+                repl.tokens = std::move(savedTokens);
                 repl.current = savedCurrent;
                 
             } catch (const std::exception& e) {

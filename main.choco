@@ -63,7 +63,7 @@ puts "17. REPL - DONE";
 puts "";
 
 puts "<=== Version 0.4.5 - Pistachio Twist Patch";
-puts "18. Performance optimizations";
+puts "18. Performance optimizations - DONE";
 puts "19. Enhanced error messages";
 
 puts "";
