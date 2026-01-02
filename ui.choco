@@ -1,0 +1,340 @@
+// ChocoLang Calculator
+// A fully-featured calculator with memory functions
+
+gui_init("com.chocolang.calculator");
+
+// Calculator state
+let display_value = "0";
+let stored_value = 0;
+let current_operation = "";
+let should_reset = false;
+let memory = 0;
+
+// Create main window
+let window = gui_window("ChocoCalculator", 350, 450);
+let main_box = gui_box("vertical", 5);
+
+// Display
+let display = gui_label("0");
+gui_add(window, main_box);
+gui_add(main_box, display);
+
+// Memory display
+let memory_label = gui_label("M: 0");
+gui_add(main_box, memory_label);
+
+// Separator
+let sep1 = gui_separator("horizontal");
+gui_add(main_box, sep1);
+
+// Button grid containers
+let row1 = gui_box("horizontal", 5);
+let row2 = gui_box("horizontal", 5);
+let row3 = gui_box("horizontal", 5);
+let row4 = gui_box("horizontal", 5);
+let row5 = gui_box("horizontal", 5);
+
+gui_add(main_box, row1);
+gui_add(main_box, row2);
+gui_add(main_box, row3);
+gui_add(main_box, row4);
+gui_add(main_box, row5);
+
+// Memory buttons (row 1)
+let btn_mc = gui_button("MC", "btn_mc");
+let btn_mr = gui_button("MR", "btn_mr");
+let btn_m_plus = gui_button("M+", "btn_m_plus");
+let btn_m_minus = gui_button("M-", "btn_m_minus");
+
+gui_add(row1, btn_mc);
+gui_add(row1, btn_mr);
+gui_add(row1, btn_m_plus);
+gui_add(row1, btn_m_minus);
+
+// Row 2: Clear and operations
+let btn_clear = gui_button("C", "btn_clear");
+let btn_sign = gui_button("+/-", "btn_sign");
+let btn_percent = gui_button("%", "btn_percent");
+let btn_divide = gui_button("/", "btn_divide");
+
+gui_add(row2, btn_clear);
+gui_add(row2, btn_sign);
+gui_add(row2, btn_percent);
+gui_add(row2, btn_divide);
+
+// Row 3: 7, 8, 9, *
+let btn_7 = gui_button("7", "btn_7");
+let btn_8 = gui_button("8", "btn_8");
+let btn_9 = gui_button("9", "btn_9");
+let btn_multiply = gui_button("*", "btn_multiply");
+
+gui_add(row3, btn_7);
+gui_add(row3, btn_8);
+gui_add(row3, btn_9);
+gui_add(row3, btn_multiply);
+
+// Row 4: 4, 5, 6, -
+let btn_4 = gui_button("4", "btn_4");
+let btn_5 = gui_button("5", "btn_5");
+let btn_6 = gui_button("6", "btn_6");
+let btn_subtract = gui_button("-", "btn_subtract");
+
+gui_add(row4, btn_4);
+gui_add(row4, btn_5);
+gui_add(row4, btn_6);
+gui_add(row4, btn_subtract);
+
+// Row 5: 1, 2, 3, +
+let btn_1 = gui_button("1", "btn_1");
+let btn_2 = gui_button("2", "btn_2");
+let btn_3 = gui_button("3", "btn_3");
+let btn_add = gui_button("+", "btn_add");
+
+gui_add(row5, btn_1);
+gui_add(row5, btn_2);
+gui_add(row5, btn_3);
+gui_add(row5, btn_add);
+
+// Row 6: 0, ., =
+let row6 = gui_box("horizontal", 5);
+gui_add(main_box, row6);
+
+let btn_0 = gui_button("0", "btn_0");
+let btn_dot = gui_button(".", "btn_dot");
+let btn_sqrt = gui_button("√", "btn_sqrt");
+let btn_equals = gui_button("=", "btn_equals");
+
+gui_add(row6, btn_0);
+gui_add(row6, btn_dot);
+gui_add(row6, btn_sqrt);
+gui_add(row6, btn_equals);
+
+// Update display function
+fn update_display() {
+    gui_set_text(display, display_value);
+    return true;
+}
+
+// Update memory display
+fn update_memory_display() {
+    gui_set_text(memory_label, "M: " + str(memory));
+    return true;
+}
+
+// Number button handler
+fn handle_number(digit) {
+    if (should_reset) {
+        display_value = digit;
+        should_reset = false;
+    } else {
+        if (display_value == "0") {
+            display_value = digit;
+        } else {
+            display_value = display_value + digit;
+        }
+    }
+    update_display();
+    return true;
+}
+
+// Individual number handlers
+fn press_0() { return handle_number("0"); }
+fn press_1() { return handle_number("1"); }
+fn press_2() { return handle_number("2"); }
+fn press_3() { return handle_number("3"); }
+fn press_4() { return handle_number("4"); }
+fn press_5() { return handle_number("5"); }
+fn press_6() { return handle_number("6"); }
+fn press_7() { return handle_number("7"); }
+fn press_8() { return handle_number("8"); }
+fn press_9() { return handle_number("9"); }
+
+// Decimal point
+fn press_dot() {
+    if (should_reset) {
+        display_value = "0.";
+        should_reset = false;
+    } else {
+        let has_dot = false;
+        let i = 0;
+        while (i < len(display_value)) {
+            let char = display_value[i];
+            if (char == ".") {
+                has_dot = true;
+            }
+            i = i + 1;
+        }
+        if (!has_dot) {
+            display_value = display_value + ".";
+        }
+    }
+    update_display();
+    return true;
+}
+
+// Perform calculation
+fn calculate() {
+    let current = float(display_value);
+    let result = 0;
+    
+    if (current_operation == "+") {
+        result = stored_value + current;
+    } else {
+        if (current_operation == "-") {
+            result = stored_value - current;
+        } else {
+            if (current_operation == "*") {
+                result = stored_value * current;
+            } else {
+                if (current_operation == "/") {
+                    if (current == 0) {
+                        display_value = "Error";
+                        update_display();
+                        return 0;
+                    }
+                    result = stored_value / current;
+                } else {
+                    result = current;
+                }
+            }
+        }
+    }
+    
+    return result;
+}
+
+// Operation handlers
+fn handle_operation(op) {
+    if (current_operation != "") {
+        stored_value = calculate();
+        display_value = str(stored_value);
+    } else {
+        stored_value = float(display_value);
+    }
+    current_operation = op;
+    should_reset = true;
+    update_display();
+    return true;
+}
+
+fn press_add() { return handle_operation("+"); }
+fn press_subtract() { return handle_operation("-"); }
+fn press_multiply() { return handle_operation("*"); }
+fn press_divide() { return handle_operation("/"); }
+
+// Equals
+fn press_equals() {
+    if (current_operation != "") {
+        stored_value = calculate();
+        display_value = str(stored_value);
+        current_operation = "";
+        should_reset = true;
+        update_display();
+    }
+    return true;
+}
+
+// Clear
+fn press_clear() {
+    display_value = "0";
+    stored_value = 0;
+    current_operation = "";
+    should_reset = false;
+    update_display();
+    return true;
+}
+
+// Sign change (+/-)
+fn press_sign() {
+    let num = float(display_value);
+    num = 0 - num;
+    display_value = str(num);
+    update_display();
+    return true;
+}
+
+// Percent
+fn press_percent() {
+    let num = float(display_value);
+    num = num / 100;
+    display_value = str(num);
+    update_display();
+    return true;
+}
+
+// Square root
+fn press_sqrt() {
+    let num = float(display_value);
+    if (num < 0) {
+        display_value = "Error";
+    } else {
+        let result = sqrt(num);
+        display_value = str(result);
+    }
+    update_display();
+    should_reset = true;
+    return true;
+}
+
+// Memory functions
+fn press_mc() {
+    memory = 0;
+    update_memory_display();
+    return true;
+}
+
+fn press_mr() {
+    display_value = str(memory);
+    update_display();
+    should_reset = true;
+    return true;
+}
+
+fn press_m_plus() {
+    memory = memory + float(display_value);
+    update_memory_display();
+    return true;
+}
+
+fn press_m_minus() {
+    memory = memory - float(display_value);
+    update_memory_display();
+    return true;
+}
+
+// Register all callbacks
+gui_on(btn_0, "clicked", "press_0");
+gui_on(btn_1, "clicked", "press_1");
+gui_on(btn_2, "clicked", "press_2");
+gui_on(btn_3, "clicked", "press_3");
+gui_on(btn_4, "clicked", "press_4");
+gui_on(btn_5, "clicked", "press_5");
+gui_on(btn_6, "clicked", "press_6");
+gui_on(btn_7, "clicked", "press_7");
+gui_on(btn_8, "clicked", "press_8");
+gui_on(btn_9, "clicked", "press_9");
+
+gui_on(btn_dot, "clicked", "press_dot");
+gui_on(btn_add, "clicked", "press_add");
+gui_on(btn_subtract, "clicked", "press_subtract");
+gui_on(btn_multiply, "clicked", "press_multiply");
+gui_on(btn_divide, "clicked", "press_divide");
+gui_on(btn_equals, "clicked", "press_equals");
+gui_on(btn_clear, "clicked", "press_clear");
+gui_on(btn_sign, "clicked", "press_sign");
+gui_on(btn_percent, "clicked", "press_percent");
+gui_on(btn_sqrt, "clicked", "press_sqrt");
+
+gui_on(btn_mc, "clicked", "press_mc");
+gui_on(btn_mr, "clicked", "press_mr");
+gui_on(btn_m_plus, "clicked", "press_m_plus");
+gui_on(btn_m_minus, "clicked", "press_m_minus");
+
+puts "Calculator initialized!";
+puts "Features:";
+puts "  - Basic operations (+, -, *, /)";
+puts "  - Memory functions (MC, MR, M+, M-)";
+puts "  - Square root, percent, sign change";
+puts "  - Decimal support";
+
+gui_run();

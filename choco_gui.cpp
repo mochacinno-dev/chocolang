@@ -149,8 +149,8 @@ Value ChocoGUI::gui_init(const std::vector<Value>& args, int line) {
         appId = args[0].str;
     }
     
-    // Create application with FLAGS_NONE to prevent automatic activation
-    app = gtk_application_new(appId.c_str(), G_APPLICATION_FLAGS_NONE);
+    // Create application with DEFAULT_FLAGS
+    app = gtk_application_new(appId.c_str(), G_APPLICATION_DEFAULT_FLAGS);
     
     if (!app) {
         throw RuntimeError("Failed to create GTK application", line);
@@ -371,6 +371,10 @@ Value ChocoGUI::gui_set_text(const std::vector<Value>& args, int line) {
     else if (GTK_IS_WINDOW(widget)) {
         gtk_window_set_title(GTK_WINDOW(widget), text.c_str());
     }
+    else if (GTK_IS_TEXT_VIEW(widget)) {
+        GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(widget));
+        gtk_text_buffer_set_text(buffer, text.c_str(), -1);
+    }
     else {
         throw RuntimeError("Cannot set text on this widget type", line);
     }
@@ -401,6 +405,16 @@ Value ChocoGUI::gui_get_text(const std::vector<Value>& args, int line) {
     else if (GTK_IS_ENTRY(widget)) {
         GtkEntryBuffer* buffer = gtk_entry_get_buffer(GTK_ENTRY(widget));
         return Value(std::string(gtk_entry_buffer_get_text(buffer)));
+    }
+    else if (GTK_IS_TEXT_VIEW(widget)) {
+        GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(widget));
+        GtkTextIter start, end;
+        gtk_text_buffer_get_start_iter(buffer, &start);
+        gtk_text_buffer_get_end_iter(buffer, &end);
+        gchar* text = gtk_text_buffer_get_text(buffer, &start, &end, FALSE);
+        std::string result(text);
+        g_free(text);
+        return Value(result);
     }
     else {
         throw RuntimeError("Cannot get text from this widget type", line);
@@ -454,7 +468,7 @@ Value ChocoGUI::gui_run(const std::vector<Value>& args, int line) {
     }
     
     // Show all widgets
-    gtk_widget_show(mainWindow);
+    gtk_widget_set_visible(mainWindow, TRUE);
     
     // Present the window
     gtk_window_present(GTK_WINDOW(mainWindow));

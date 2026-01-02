@@ -1,0 +1,202 @@
+// ChocoLang Password Generator
+// Generate secure random passwords with customizable options
+
+gui_init("com.chocolang.passwordgen");
+
+// Create main window
+let window = gui_window("Password Generator", 450, 400);
+let main_box = gui_box("vertical", 10);
+
+gui_add(window, main_box);
+
+// Title
+let title_label = gui_label("Random Password Generator");
+gui_add(main_box, title_label);
+
+let sep1 = gui_separator("horizontal");
+gui_add(main_box, sep1);
+
+// Password length section
+let length_frame = gui_frame("Password Length");
+let length_box = gui_box("vertical", 5);
+gui_add(main_box, length_frame);
+gui_add(length_frame, length_box);
+
+let length_label = gui_label("Enter password length (4-64):");
+gui_add(length_box, length_label);
+
+let length_entry = gui_entry("16", "length_entry");
+gui_add(length_box, length_entry);
+
+// Character options section
+let options_frame = gui_frame("Character Options");
+let options_box = gui_box("vertical", 5);
+gui_add(main_box, options_frame);
+gui_add(options_frame, options_box);
+
+let check_lowercase = gui_checkbox("Lowercase letters (a-z)", "check_lower");
+let check_uppercase = gui_checkbox("Uppercase letters (A-Z)", "check_upper");
+let check_numbers = gui_checkbox("Numbers (0-9)", "check_numbers");
+let check_symbols = gui_checkbox("Symbols (!@#$%^&*)", "check_symbols");
+
+gui_add(options_box, check_lowercase);
+gui_add(options_box, check_uppercase);
+gui_add(options_box, check_numbers);
+gui_add(options_box, check_symbols);
+
+// Set defaults (lowercase and numbers checked)
+gui_set_checked(check_lowercase, true);
+gui_set_checked(check_uppercase, true);
+gui_set_checked(check_numbers, true);
+gui_set_checked(check_symbols, false);
+
+// Generated password display
+let password_frame = gui_frame("Generated Password");
+let password_box = gui_box("vertical", 5);
+gui_add(main_box, password_frame);
+gui_add(password_frame, password_box);
+
+let password_display = gui_textview("password_display");
+gui_add(password_box, password_display);
+
+// Buttons
+let button_box = gui_box("horizontal", 10);
+gui_add(main_box, button_box);
+
+let btn_generate = gui_button("Generate Password", "btn_generate");
+let btn_save = gui_button("Save to File", "btn_save");
+
+gui_add(button_box, btn_generate);
+gui_add(button_box, btn_save);
+
+// Status label
+let status_label = gui_label("Ready to generate password");
+gui_add(main_box, status_label);
+
+// Character sets
+let lowercase = "abcdefghijklmnopqrstuvwxyz";
+let uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+let numbers = "0123456789";
+let symbols = "!@#$%^&*()-_=+[]{}|;:,.<>?";
+
+// Last generated password
+let last_password = "";
+
+// Function to get random character from string
+fn get_random_char(charset) {
+    let len_charset = len(charset);
+    let index = random_int(0, len_charset - 1);
+    return charset[index];
+}
+
+// Generate password
+fn generate_password() {
+    // Get length from entry
+    let length_text = gui_get_text(length_entry);
+    let length = int(length_text);
+    
+    // Validate length
+    if (length < 4) {
+        gui_set_text(status_label, "Error: Length must be at least 4");
+        return false;
+    }
+    
+    if (length > 64) {
+        gui_set_text(status_label, "Error: Length must be 64 or less");
+        return false;
+    }
+    
+    // Build character set based on checkboxes
+    let charset = "";
+    let use_lower = gui_get_checked(check_lowercase);
+    let use_upper = gui_get_checked(check_uppercase);
+    let use_nums = gui_get_checked(check_numbers);
+    let use_syms = gui_get_checked(check_symbols);
+    
+    if (use_lower) {
+        charset = charset + lowercase;
+    }
+    
+    if (use_upper) {
+        charset = charset + uppercase;
+    }
+    
+    if (use_nums) {
+        charset = charset + numbers;
+    }
+    
+    if (use_syms) {
+        charset = charset + symbols;
+    }
+    
+    // Check if at least one option is selected
+    if (charset == "") {
+        gui_set_text(status_label, "Error: Select at least one character type");
+        return false;
+    }
+    
+    // Generate password
+    let password = "";
+    let i = 0;
+    while (i < length) {
+        let char = get_random_char(charset);
+        password = password + char;
+        i = i + 1;
+    }
+    
+    // Display password
+    gui_set_text(password_display, password);
+    last_password = password;
+    
+    // Update status
+    gui_set_text(status_label, "Password generated successfully! Length: " + str(length));
+    
+    return true;
+}
+
+// Save password to file
+fn save_password() {
+    if (last_password == "") {
+        gui_set_text(status_label, "Error: Generate a password first");
+        return false;
+    }
+    
+    // Create filename with timestamp
+    let filename = "password.txt";
+    
+    // Prepare file content
+    let content = "Generated Password";
+    content = content + "==================";
+    content = content + last_password;
+    content = content + " ";
+    content = content + "Length: " + str(len(last_password)) + " characters";
+    content = content + "";
+    
+    // Check options used
+    content = content + "Character types used:";
+    if (gui_get_checked(check_lowercase)) {
+        content = content + "  - Lowercase letters";
+    }
+    if (gui_get_checked(check_uppercase)) {
+        content = content + "  - Uppercase letters";
+    }
+    if (gui_get_checked(check_numbers)) {
+        content = content + "  - Numbers";
+    }
+    if (gui_get_checked(check_symbols)) {
+        content = content + "  - Symbols";
+    }
+    
+    // Write to file
+    write_file(filename, content);
+    
+    gui_set_text(status_label, "Password saved to " + filename);
+    
+    return true;
+}
+
+// Register callbacks
+gui_on(btn_generate, "clicked", "generate_password");
+gui_on(btn_save, "clicked", "save_password");
+
+gui_run();
