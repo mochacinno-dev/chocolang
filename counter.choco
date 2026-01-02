@@ -1,20 +1,33 @@
 // Simple counter app
+puts "Initializing GUI...";
 gui_init("com.chocolang.counter");
+puts "GUI initialized";
+
 let count = 0;
 let window = gui_window("Counter", 300, 200);
+puts "Window created";
+
 let box = gui_box("vertical", 10);
 let label = gui_label("Count: 0");
 let button = gui_button("Click Me");
+puts "Widgets created";
 
 gui_add(window, box);
 gui_add(box, label);
 gui_add(box, button);
+puts "Widgets added";
 
 fn increment() {
+    puts "Button clicked!";
     count = count + 1;
+    puts "Count is now: " + str(count);
     gui_set_text(label, "Count: " + str(count));
     return nil;
 }
 
 gui_on(button, "clicked", "increment");
+puts "Callback registered";
+
+puts "Starting GUI...";
 gui_run();
+puts "GUI ended";

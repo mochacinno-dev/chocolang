@@ -98,7 +98,6 @@ ChocoGUI* ChocoGUI::getInstance(int argc, char** argv) {
 }
 
 void ChocoGUI::on_activate(GtkApplication* app, gpointer user_data) {
-    ChocoGUI* gui = static_cast<ChocoGUI*>(user_data);
 }
 
 void ChocoGUI::on_button_clicked(GtkButton* button, gpointer user_data) {
@@ -123,9 +122,23 @@ void ChocoGUI::executeCallback(const std::string& widgetId, const std::string& e
     auto it = widgets.find(widgetId);
     if (it != widgets.end()) {
         auto callbackIt = it->second.callbacks.find(event);
-        if (callbackIt != it->second.callbacks.end() && interpreter) {
+        if (callbackIt != it->second.callbacks.end() && interpreter && callbackFunc) {
             std::string funcName = callbackIt->second;
             std::cout << "Callback triggered: " << funcName << std::endl;
+            
+            try {
+                std::vector<Value> args;
+                Value result = callbackFunc(interpreter, funcName, args, 0);
+            } catch (const std::exception& e) {
+                std::cerr << "Error executing callback: " << e.what() << std::endl;
+            }
+        } else {
+            if (!interpreter) {
+                std::cerr << "Error: No interpreter set for callback" << std::endl;
+            }
+            if (!callbackFunc) {
+                std::cerr << "Error: No callback function set" << std::endl;
+            }
         }
     }
 }
@@ -136,8 +149,20 @@ Value ChocoGUI::gui_init(const std::vector<Value>& args, int line) {
         appId = args[0].str;
     }
     
-    app = gtk_application_new(appId.c_str(), G_APPLICATION_DEFAULT_FLAGS);
-    g_signal_connect(app, "activate", G_CALLBACK(on_activate), this);
+    // Create application with FLAGS_NONE to prevent automatic activation
+    app = gtk_application_new(appId.c_str(), G_APPLICATION_FLAGS_NONE);
+    
+    if (!app) {
+        throw RuntimeError("Failed to create GTK application", line);
+    }
+    
+    // Register the application but don't activate yet
+    GError* error = nullptr;
+    if (!g_application_register(G_APPLICATION(app), nullptr, &error)) {
+        std::string errMsg = error ? error->message : "Unknown error";
+        if (error) g_error_free(error);
+        throw RuntimeError("Failed to register application: " + errMsg, line);
+    }
     
     return Value(true);
 }
@@ -424,14 +449,30 @@ Value ChocoGUI::gui_run(const std::vector<Value>& args, int line) {
         throw RuntimeError("GUI not initialized. Call gui_init() first", line);
     }
     
-    if (mainWindow) {
-        gtk_window_present(GTK_WINDOW(mainWindow));
+    if (!mainWindow) {
+        throw RuntimeError("No window created. Call gui_window() first", line);
     }
     
-    int status = g_application_run(G_APPLICATION(app), argc, argv);
+    // Show all widgets
+    gtk_widget_show(mainWindow);
+    
+    // Present the window
+    gtk_window_present(GTK_WINDOW(mainWindow));
+    
+    // Hold the application (keeps it running)
+    g_application_hold(G_APPLICATION(app));
+    
+    // Run the main loop WITHOUT calling g_application_run
+    // because we've already registered the application
+    GMainLoop* loop = g_main_loop_new(nullptr, FALSE);
+    g_main_loop_run(loop);
+    g_main_loop_unref(loop);
+    
+    // Release and cleanup
+    g_application_release(G_APPLICATION(app));
     g_object_unref(app);
     
-    return Value(static_cast<double>(status));
+    return Value(0.0);
 }
 
 Value ChocoGUI::gui_quit(const std::vector<Value>& args, int line) {

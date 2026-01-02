@@ -12,15 +12,20 @@
 #include <memory>
 #include <functional>
 
-struct Value;
+// Add this typedef before the ChocoGUI class
 class Interpreter;
-class RuntimeError;
+struct Value;
+
+typedef Value (*CallbackFunction)(Interpreter*, const std::string&, const std::vector<Value>&, int);
 
 class ChocoGUI {
 private:
     static ChocoGUI* instance;
     Interpreter* interpreter;
     
+    typedef Value (*CallbackFunction)(Interpreter*, const std::string&, const std::vector<Value>&, int);
+    CallbackFunction callbackFunc;
+
     struct WidgetData {
         GtkWidget* widget;
         std::string id;
@@ -33,7 +38,7 @@ private:
     int argc;
     char** argv;
     
-    ChocoGUI(int argc, char** argv) : interpreter(nullptr), app(nullptr), 
+    ChocoGUI(int argc, char** argv) : interpreter(nullptr), callbackFunc(nullptr), app(nullptr), 
                                        mainWindow(nullptr), argc(argc), argv(argv) {}
     
     static void on_activate(GtkApplication* app, gpointer user_data);
@@ -46,6 +51,7 @@ private:
 public:
     static ChocoGUI* getInstance(int argc = 0, char** argv = nullptr);
     void setInterpreter(Interpreter* interp) { interpreter = interp; }
+    void setCallbackFunction(CallbackFunction func) { callbackFunc = func; }
     
     Value gui_init(const std::vector<Value>& args, int line);
     Value gui_window(const std::vector<Value>& args, int line);

@@ -388,7 +388,6 @@ public:
     std::unordered_map<std::string, StructDef> structDefs;
     std::vector<Token> tokens;
     size_t current;
-    
     bool inFunction;
     bool inLoop;
     bool hasReturned;
@@ -399,6 +398,483 @@ public:
     std::string currentException;
     
     static const std::unordered_map<std::string, bool> builtinFunctions;
+
+    Value callFunction(const std::string& name, const std::vector<Value>& args, int callLine) {
+        // Higher-order functions
+        if (name == "map") {
+            if (args.size() < 2) {
+                throw RuntimeError("map() expects 2 arguments (array, lambda), got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::ARRAY) {
+                throw RuntimeError("map() first argument must be an array, got " + args[0].getType(), callLine);
+            }
+            if (args[1].type != Value::LAMBDA) {
+                throw RuntimeError("map() second argument must be a lambda, got " + args[1].getType(), callLine);
+            }
+            std::vector<Value> result;
+            result.reserve(args[0].array.size());
+            for (const auto& item : args[0].array) {
+                std::vector<Value> lambdaArgs = {item};
+                result.push_back(callLambda(args[1], lambdaArgs));
+            }
+            return Value(result);
+        }
+        
+        if (name == "filter") {
+            if (args.size() < 2) {
+                throw RuntimeError("filter() expects 2 arguments (array, lambda), got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::ARRAY) {
+                throw RuntimeError("filter() first argument must be an array, got " + args[0].getType(), callLine);
+            }
+            if (args[1].type != Value::LAMBDA) {
+                throw RuntimeError("filter() second argument must be a lambda, got " + args[1].getType(), callLine);
+            }
+            std::vector<Value> result;
+            for (const auto& item : args[0].array) {
+                std::vector<Value> lambdaArgs = {item};
+                Value condition = callLambda(args[1], lambdaArgs);
+                if (condition.type == Value::BOOL && condition.boolean) {
+                    result.push_back(item);
+                }
+            }
+            return Value(result);
+        }
+        
+        if (name == "reduce") {
+            if (args.size() < 3) {
+                throw RuntimeError("reduce() expects 3 arguments (array, initial, lambda), got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::ARRAY) {
+                throw RuntimeError("reduce() first argument must be an array, got " + args[0].getType(), callLine);
+            }
+            if (args[2].type != Value::LAMBDA) {
+                throw RuntimeError("reduce() third argument must be a lambda, got " + args[2].getType(), callLine);
+            }
+            Value accumulator = args[1];
+            for (const auto& item : args[0].array) {
+                std::vector<Value> lambdaArgs = {accumulator, item};
+                accumulator = callLambda(args[2], lambdaArgs);
+            }
+            return accumulator;
+        }
+        
+        if (name == "typeof") {
+            if (args.size() == 0) {
+                throw RuntimeError("typeof() expects 1 argument, got 0", callLine);
+            }
+            return Value(args[0].getType());
+        }
+        
+        // Standard library functions
+        if (name == "len") {
+            if (args.size() == 0) {
+                throw RuntimeError("len() expects 1 argument, got 0", callLine);
+            }
+            if (args[0].type == Value::ARRAY) {
+                return Value(static_cast<double>(args[0].array.size()));
+            } else if (args[0].type == Value::STRING) {
+                return Value(static_cast<double>(args[0].str.length()));
+            }
+            throw RuntimeError("len() requires array or string, got " + args[0].getType(), callLine);
+        }
+        
+        if (name == "push") {
+            if (args.size() < 2) {
+                throw RuntimeError("push() expects 2 arguments (array, value), got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::ARRAY) {
+                throw RuntimeError("push() first argument must be an array, got " + args[0].getType(), callLine);
+            }
+            Value arr = args[0];
+            arr.array.push_back(args[1]);
+            return arr;
+        }
+        
+        if (name == "pop") {
+            if (args.size() == 0) {
+                throw RuntimeError("pop() expects 1 argument (array), got 0", callLine);
+            }
+            if (args[0].type != Value::ARRAY) {
+                throw RuntimeError("pop() requires an array, got " + args[0].getType(), callLine);
+            }
+            Value arr = args[0];
+            if (arr.array.empty()) {
+                throw RuntimeError("Cannot pop from empty array", callLine);
+            }
+            Value last = arr.array.back();
+            arr.array.pop_back();
+            return last;
+        }
+        
+        if (name == "sqrt") {
+            if (args.size() == 0) {
+                throw RuntimeError("sqrt() expects 1 argument, got 0", callLine);
+            }
+            if (args[0].type != Value::NUMBER) {
+                throw RuntimeError("sqrt() requires a number, got " + args[0].getType(), callLine);
+            }
+            if (args[0].num < 0) {
+                throw RuntimeError("sqrt() of negative number", callLine);
+            }
+            return Value(sqrt(args[0].num));
+        }
+        
+        if (name == "pow") {
+            if (args.size() < 2) {
+                throw RuntimeError("pow() expects 2 arguments (base, exponent), got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::NUMBER || args[1].type != Value::NUMBER) {
+                throw RuntimeError("pow() requires two numbers", callLine);
+            }
+            return Value(pow(args[0].num, args[1].num));
+        }
+        
+        if (name == "abs") {
+            if (args.size() == 0) {
+                throw RuntimeError("abs() expects 1 argument, got 0", callLine);
+            }
+            if (args[0].type != Value::NUMBER) {
+                throw RuntimeError("abs() requires a number, got " + args[0].getType(), callLine);
+            }
+            return Value(fabs(args[0].num));
+        }
+        
+        if (name == "floor") {
+            if (args.size() == 0) {
+                throw RuntimeError("floor() expects 1 argument, got 0", callLine);
+            }
+            if (args[0].type != Value::NUMBER) {
+                throw RuntimeError("floor() requires a number, got " + args[0].getType(), callLine);
+            }
+            return Value(floor(args[0].num));
+        }
+        
+        if (name == "ceil") {
+            if (args.size() == 0) {
+                throw RuntimeError("ceil() expects 1 argument, got 0", callLine);
+            }
+            if (args[0].type != Value::NUMBER) {
+                throw RuntimeError("ceil() requires a number, got " + args[0].getType(), callLine);
+            }
+            return Value(ceil(args[0].num));
+        }
+        
+        if (name == "round") {
+            if (args.size() == 0) {
+                throw RuntimeError("round() expects 1 argument, got 0", callLine);
+            }
+            if (args[0].type != Value::NUMBER) {
+                throw RuntimeError("round() requires a number, got " + args[0].getType(), callLine);
+            }
+            return Value(round(args[0].num));
+        }
+        
+        if (name == "min") {
+            if (args.size() < 2) {
+                throw RuntimeError("min() expects 2 arguments, got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::NUMBER || args[1].type != Value::NUMBER) {
+                throw RuntimeError("min() requires two numbers", callLine);
+            }
+            return Value(std::min(args[0].num, args[1].num));
+        }
+        
+        if (name == "max") {
+            if (args.size() < 2) {
+                throw RuntimeError("max() expects 2 arguments, got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::NUMBER || args[1].type != Value::NUMBER) {
+                throw RuntimeError("max() requires two numbers", callLine);
+            }
+            return Value(std::max(args[0].num, args[1].num));
+        }
+        
+        if (name == "random") {
+            return Value(static_cast<double>(rand()) / RAND_MAX);
+        }
+        
+        if (name == "random_int") {
+            if (args.size() < 2) {
+                throw RuntimeError("random_int() expects 2 arguments (min, max), got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::NUMBER || args[1].type != Value::NUMBER) {
+                throw RuntimeError("random_int() requires two numbers", callLine);
+            }
+            int min = static_cast<int>(args[0].num);
+            int max = static_cast<int>(args[1].num);
+            if (min > max) {
+                throw RuntimeError("random_int(): min cannot be greater than max", callLine);
+            }
+            return Value(static_cast<double>(min + rand() % (max - min + 1)));
+        }
+        
+        if (name == "str") {
+            if (args.size() == 0) {
+                return Value("");
+            }
+            return Value(args[0].toString());
+        }
+        
+        if (name == "int") {
+            if (args.size() == 0) {
+                throw RuntimeError("int() expects 1 argument, got 0", callLine);
+            }
+            if (args[0].type == Value::NUMBER) {
+                return Value(static_cast<double>(static_cast<int>(args[0].num)));
+            } else if (args[0].type == Value::STRING) {
+                try {
+                    return Value(static_cast<double>(std::stoi(args[0].str)));
+                } catch (...) {
+                    throw RuntimeError("int(): cannot convert '" + args[0].str + "' to integer", callLine);
+                }
+            }
+            throw RuntimeError("int() requires number or string, got " + args[0].getType(), callLine);
+        }
+        
+        if (name == "float") {
+            if (args.size() == 0) {
+                throw RuntimeError("float() expects 1 argument, got 0", callLine);
+            }
+            if (args[0].type == Value::STRING) {
+                try {
+                    return Value(std::stod(args[0].str));
+                } catch (...) {
+                    throw RuntimeError("float(): cannot convert '" + args[0].str + "' to float", callLine);
+                }
+            } else if (args[0].type == Value::NUMBER) {
+                return args[0];
+            }
+            throw RuntimeError("float() requires number or string, got " + args[0].getType(), callLine);
+        }
+        
+        if (name == "uppercase") {
+            if (args.size() == 0) {
+                throw RuntimeError("uppercase() expects 1 argument, got 0", callLine);
+            }
+            if (args[0].type != Value::STRING) {
+                throw RuntimeError("uppercase() requires a string, got " + args[0].getType(), callLine);
+            }
+            std::string result = args[0].str;
+            std::transform(result.begin(), result.end(), result.begin(), ::toupper);
+            return Value(result);
+        }
+        
+        if (name == "lowercase") {
+            if (args.size() == 0) {
+                throw RuntimeError("lowercase() expects 1 argument, got 0", callLine);
+            }
+            if (args[0].type != Value::STRING) {
+                throw RuntimeError("lowercase() requires a string, got " + args[0].getType(), callLine);
+            }
+            std::string result = args[0].str;
+            std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+            return Value(result);
+        }
+        
+        if (name == "substr") {
+            if (args.size() < 3) {
+                throw RuntimeError("substr() expects 3 arguments (string, start, length), got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::STRING) {
+                throw RuntimeError("substr() first argument must be a string, got " + args[0].getType(), callLine);
+            }
+            if (args[1].type != Value::NUMBER || args[2].type != Value::NUMBER) {
+                throw RuntimeError("substr() start and length must be numbers", callLine);
+            }
+            int start = static_cast<int>(args[1].num);
+            int length = static_cast<int>(args[2].num);
+            if (start < 0 || start >= static_cast<int>(args[0].str.length())) {
+                throw RuntimeError("substr(): start index out of bounds", callLine);
+            }
+            return Value(args[0].str.substr(start, length));
+        }
+        
+        if (name == "split") {
+            if (args.size() < 2) {
+                throw RuntimeError("split() expects 2 arguments (string, delimiter), got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::STRING || args[1].type != Value::STRING) {
+                throw RuntimeError("split() requires two strings", callLine);
+            }
+            std::vector<Value> result;
+            std::string str = args[0].str;
+            std::string delim = args[1].str;
+            if (delim.empty()) {
+                throw RuntimeError("split(): delimiter cannot be empty", callLine);
+            }
+            size_t pos = 0;
+            while ((pos = str.find(delim)) != std::string::npos) {
+                result.push_back(Value(str.substr(0, pos)));
+                str.erase(0, pos + delim.length());
+            }
+            result.push_back(Value(str));
+            return Value(result);
+        }
+        
+        if (name == "join") {
+            if (args.size() < 2) {
+                throw RuntimeError("join() expects 2 arguments (array, separator), got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::ARRAY) {
+                throw RuntimeError("join() first argument must be an array, got " + args[0].getType(), callLine);
+            }
+            if (args[1].type != Value::STRING) {
+                throw RuntimeError("join() second argument must be a string, got " + args[1].getType(), callLine);
+            }
+            std::string result;
+            for (size_t i = 0; i < args[0].array.size(); i++) {
+                result += args[0].array[i].toString();
+                if (i < args[0].array.size() - 1) {
+                    result += args[1].str;
+                }
+            }
+            return Value(result);
+        }
+        
+        if (name == "read_file") {
+            if (args.size() == 0) {
+                throw RuntimeError("read_file() expects 1 argument (filename), got 0", callLine);
+            }
+            if (args[0].type != Value::STRING) {
+                throw RuntimeError("read_file() requires a string filename, got " + args[0].getType(), callLine);
+            }
+            std::ifstream file(args[0].str);
+            if (!file) {
+                throw RuntimeError("read_file(): cannot open file '" + args[0].str + "'", callLine);
+            }
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            return Value(buffer.str());
+        }
+        
+        if (name == "write_file") {
+            if (args.size() < 2) {
+                throw RuntimeError("write_file() expects 2 arguments (filename, content), got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::STRING || args[1].type != Value::STRING) {
+                throw RuntimeError("write_file() requires two strings", callLine);
+            }
+            std::ofstream file(args[0].str);
+            if (!file) {
+                throw RuntimeError("write_file(): cannot open file '" + args[0].str + "' for writing", callLine);
+            }
+            file << args[1].str;
+            return Value(true);
+        }
+        
+        if (name == "append_file") {
+            if (args.size() < 2) {
+                throw RuntimeError("append_file() expects 2 arguments (filename, content), got " + std::to_string(args.size()), callLine);
+            }
+            if (args[0].type != Value::STRING || args[1].type != Value::STRING) {
+                throw RuntimeError("append_file() requires two strings", callLine);
+            }
+            std::ofstream file(args[0].str, std::ios::app);
+            if (!file) {
+                throw RuntimeError("append_file(): cannot open file '" + args[0].str + "' for appending", callLine);
+            }
+            file << args[1].str;
+            return Value(true);
+        }
+        
+        if (name == "file_exists") {
+            if (args.size() == 0) {
+                throw RuntimeError("file_exists() expects 1 argument (filename), got 0", callLine);
+            }
+            if (args[0].type != Value::STRING) {
+                throw RuntimeError("file_exists() requires a string filename, got " + args[0].getType(), callLine);
+            }
+            std::ifstream file(args[0].str);
+            return Value(file.good());
+        }
+        
+        if (name == "input") {
+            // input() - read a line from stdin
+            // input(prompt) - print prompt then read a line
+            std::string prompt = "";
+            if (args.size() > 0) {
+                if (args[0].type != Value::STRING) {
+                    throw RuntimeError("input() prompt must be a string, got " + args[0].getType(), callLine);
+                }
+                prompt = args[0].str;
+            }
+            
+            if (!prompt.empty()) {
+                std::cout << prompt;
+                std::cout.flush();
+            }
+            
+            std::string line;
+            if (std::getline(std::cin, line)) {
+                return Value(line);
+            } else {
+                return Value("");
+            }
+        }
+
+        ChocoGUI* gui = ChocoGUI::getInstance(0, nullptr);
+        gui->setInterpreter(this);
+
+        if (name == "gui_init") return gui->gui_init(args, callLine);
+        if (name == "gui_window") return gui->gui_window(args, callLine);
+        if (name == "gui_button") return gui->gui_button(args, callLine);
+        if (name == "gui_label") return gui->gui_label(args, callLine);
+        if (name == "gui_entry") return gui->gui_entry(args, callLine);
+        if (name == "gui_box") return gui->gui_box(args, callLine);
+        if (name == "gui_add") return gui->gui_add(args, callLine);
+        if (name == "gui_set_text") return gui->gui_set_text(args, callLine);
+        if (name == "gui_get_text") return gui->gui_get_text(args, callLine);
+        if (name == "gui_on") return gui->gui_on(args, callLine);
+        if (name == "gui_show") return gui->gui_show(args, callLine);
+        if (name == "gui_run") return gui->gui_run(args, callLine);
+        if (name == "gui_quit") return gui->gui_quit(args, callLine);
+        if (name == "gui_checkbox") return gui->gui_checkbox(args, callLine);
+        if (name == "gui_textview") return gui->gui_textview(args, callLine);
+        if (name == "gui_frame") return gui->gui_frame(args, callLine);
+        if (name == "gui_separator") return gui->gui_separator(args, callLine);
+        if (name == "gui_set_sensitive") return gui->gui_set_sensitive(args, callLine);
+        if (name == "gui_get_checked") return gui->gui_get_checked(args, callLine);
+        if (name == "gui_set_checked") return gui->gui_set_checked(args, callLine);
+        // User-defined functions
+        auto it = functions.find(name);
+        if (it == functions.end()) {
+            throw RuntimeError("Undefined function '" + name + "'", callLine);
+        }
+
+        Function& func = it->second;
+        
+        if (args.size() < func.params.size()) {
+            throw RuntimeError("Function '" + name + "' expects " + std::to_string(func.params.size()) + 
+                             " arguments, got " + std::to_string(args.size()), callLine);
+        }
+        
+        scopes.push_back(std::unordered_map<std::string, Value>());
+        
+        for (size_t i = 0; i < func.params.size() && i < args.size(); i++) {
+            scopes.back()[func.params[i]] = args[i];
+        }
+
+        size_t savedCurrent = current;
+        current = func.bodyStart;
+        bool wasInFunction = inFunction;
+        inFunction = true;
+        hasReturned = false;
+        returnValue = Value();
+
+        while (current < func.bodyEnd && !isAtEnd() && !hasReturned) {
+            statement();
+        }
+
+        Value result = returnValue;
+        hasReturned = false;
+        inFunction = wasInFunction;
+        
+        scopes.pop_back();
+        
+        current = savedCurrent;
+        return result;
+    }
 
     Interpreter(const std::vector<Token>& toks) : tokens(toks), current(0), 
         inFunction(false), inLoop(false), hasReturned(false), shouldBreak(false), 
@@ -1229,483 +1705,6 @@ public:
         return result;
     }
 
-    Value callFunction(const std::string& name, const std::vector<Value>& args, int callLine) {
-        // Higher-order functions
-        if (name == "map") {
-            if (args.size() < 2) {
-                throw RuntimeError("map() expects 2 arguments (array, lambda), got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::ARRAY) {
-                throw RuntimeError("map() first argument must be an array, got " + args[0].getType(), callLine);
-            }
-            if (args[1].type != Value::LAMBDA) {
-                throw RuntimeError("map() second argument must be a lambda, got " + args[1].getType(), callLine);
-            }
-            std::vector<Value> result;
-            result.reserve(args[0].array.size());
-            for (const auto& item : args[0].array) {
-                std::vector<Value> lambdaArgs = {item};
-                result.push_back(callLambda(args[1], lambdaArgs));
-            }
-            return Value(result);
-        }
-        
-        if (name == "filter") {
-            if (args.size() < 2) {
-                throw RuntimeError("filter() expects 2 arguments (array, lambda), got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::ARRAY) {
-                throw RuntimeError("filter() first argument must be an array, got " + args[0].getType(), callLine);
-            }
-            if (args[1].type != Value::LAMBDA) {
-                throw RuntimeError("filter() second argument must be a lambda, got " + args[1].getType(), callLine);
-            }
-            std::vector<Value> result;
-            for (const auto& item : args[0].array) {
-                std::vector<Value> lambdaArgs = {item};
-                Value condition = callLambda(args[1], lambdaArgs);
-                if (condition.type == Value::BOOL && condition.boolean) {
-                    result.push_back(item);
-                }
-            }
-            return Value(result);
-        }
-        
-        if (name == "reduce") {
-            if (args.size() < 3) {
-                throw RuntimeError("reduce() expects 3 arguments (array, initial, lambda), got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::ARRAY) {
-                throw RuntimeError("reduce() first argument must be an array, got " + args[0].getType(), callLine);
-            }
-            if (args[2].type != Value::LAMBDA) {
-                throw RuntimeError("reduce() third argument must be a lambda, got " + args[2].getType(), callLine);
-            }
-            Value accumulator = args[1];
-            for (const auto& item : args[0].array) {
-                std::vector<Value> lambdaArgs = {accumulator, item};
-                accumulator = callLambda(args[2], lambdaArgs);
-            }
-            return accumulator;
-        }
-        
-        if (name == "typeof") {
-            if (args.size() == 0) {
-                throw RuntimeError("typeof() expects 1 argument, got 0", callLine);
-            }
-            return Value(args[0].getType());
-        }
-        
-        // Standard library functions
-        if (name == "len") {
-            if (args.size() == 0) {
-                throw RuntimeError("len() expects 1 argument, got 0", callLine);
-            }
-            if (args[0].type == Value::ARRAY) {
-                return Value(static_cast<double>(args[0].array.size()));
-            } else if (args[0].type == Value::STRING) {
-                return Value(static_cast<double>(args[0].str.length()));
-            }
-            throw RuntimeError("len() requires array or string, got " + args[0].getType(), callLine);
-        }
-        
-        if (name == "push") {
-            if (args.size() < 2) {
-                throw RuntimeError("push() expects 2 arguments (array, value), got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::ARRAY) {
-                throw RuntimeError("push() first argument must be an array, got " + args[0].getType(), callLine);
-            }
-            Value arr = args[0];
-            arr.array.push_back(args[1]);
-            return arr;
-        }
-        
-        if (name == "pop") {
-            if (args.size() == 0) {
-                throw RuntimeError("pop() expects 1 argument (array), got 0", callLine);
-            }
-            if (args[0].type != Value::ARRAY) {
-                throw RuntimeError("pop() requires an array, got " + args[0].getType(), callLine);
-            }
-            Value arr = args[0];
-            if (arr.array.empty()) {
-                throw RuntimeError("Cannot pop from empty array", callLine);
-            }
-            Value last = arr.array.back();
-            arr.array.pop_back();
-            return last;
-        }
-        
-        if (name == "sqrt") {
-            if (args.size() == 0) {
-                throw RuntimeError("sqrt() expects 1 argument, got 0", callLine);
-            }
-            if (args[0].type != Value::NUMBER) {
-                throw RuntimeError("sqrt() requires a number, got " + args[0].getType(), callLine);
-            }
-            if (args[0].num < 0) {
-                throw RuntimeError("sqrt() of negative number", callLine);
-            }
-            return Value(sqrt(args[0].num));
-        }
-        
-        if (name == "pow") {
-            if (args.size() < 2) {
-                throw RuntimeError("pow() expects 2 arguments (base, exponent), got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::NUMBER || args[1].type != Value::NUMBER) {
-                throw RuntimeError("pow() requires two numbers", callLine);
-            }
-            return Value(pow(args[0].num, args[1].num));
-        }
-        
-        if (name == "abs") {
-            if (args.size() == 0) {
-                throw RuntimeError("abs() expects 1 argument, got 0", callLine);
-            }
-            if (args[0].type != Value::NUMBER) {
-                throw RuntimeError("abs() requires a number, got " + args[0].getType(), callLine);
-            }
-            return Value(fabs(args[0].num));
-        }
-        
-        if (name == "floor") {
-            if (args.size() == 0) {
-                throw RuntimeError("floor() expects 1 argument, got 0", callLine);
-            }
-            if (args[0].type != Value::NUMBER) {
-                throw RuntimeError("floor() requires a number, got " + args[0].getType(), callLine);
-            }
-            return Value(floor(args[0].num));
-        }
-        
-        if (name == "ceil") {
-            if (args.size() == 0) {
-                throw RuntimeError("ceil() expects 1 argument, got 0", callLine);
-            }
-            if (args[0].type != Value::NUMBER) {
-                throw RuntimeError("ceil() requires a number, got " + args[0].getType(), callLine);
-            }
-            return Value(ceil(args[0].num));
-        }
-        
-        if (name == "round") {
-            if (args.size() == 0) {
-                throw RuntimeError("round() expects 1 argument, got 0", callLine);
-            }
-            if (args[0].type != Value::NUMBER) {
-                throw RuntimeError("round() requires a number, got " + args[0].getType(), callLine);
-            }
-            return Value(round(args[0].num));
-        }
-        
-        if (name == "min") {
-            if (args.size() < 2) {
-                throw RuntimeError("min() expects 2 arguments, got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::NUMBER || args[1].type != Value::NUMBER) {
-                throw RuntimeError("min() requires two numbers", callLine);
-            }
-            return Value(std::min(args[0].num, args[1].num));
-        }
-        
-        if (name == "max") {
-            if (args.size() < 2) {
-                throw RuntimeError("max() expects 2 arguments, got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::NUMBER || args[1].type != Value::NUMBER) {
-                throw RuntimeError("max() requires two numbers", callLine);
-            }
-            return Value(std::max(args[0].num, args[1].num));
-        }
-        
-        if (name == "random") {
-            return Value(static_cast<double>(rand()) / RAND_MAX);
-        }
-        
-        if (name == "random_int") {
-            if (args.size() < 2) {
-                throw RuntimeError("random_int() expects 2 arguments (min, max), got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::NUMBER || args[1].type != Value::NUMBER) {
-                throw RuntimeError("random_int() requires two numbers", callLine);
-            }
-            int min = static_cast<int>(args[0].num);
-            int max = static_cast<int>(args[1].num);
-            if (min > max) {
-                throw RuntimeError("random_int(): min cannot be greater than max", callLine);
-            }
-            return Value(static_cast<double>(min + rand() % (max - min + 1)));
-        }
-        
-        if (name == "str") {
-            if (args.size() == 0) {
-                return Value("");
-            }
-            return Value(args[0].toString());
-        }
-        
-        if (name == "int") {
-            if (args.size() == 0) {
-                throw RuntimeError("int() expects 1 argument, got 0", callLine);
-            }
-            if (args[0].type == Value::NUMBER) {
-                return Value(static_cast<double>(static_cast<int>(args[0].num)));
-            } else if (args[0].type == Value::STRING) {
-                try {
-                    return Value(static_cast<double>(std::stoi(args[0].str)));
-                } catch (...) {
-                    throw RuntimeError("int(): cannot convert '" + args[0].str + "' to integer", callLine);
-                }
-            }
-            throw RuntimeError("int() requires number or string, got " + args[0].getType(), callLine);
-        }
-        
-        if (name == "float") {
-            if (args.size() == 0) {
-                throw RuntimeError("float() expects 1 argument, got 0", callLine);
-            }
-            if (args[0].type == Value::STRING) {
-                try {
-                    return Value(std::stod(args[0].str));
-                } catch (...) {
-                    throw RuntimeError("float(): cannot convert '" + args[0].str + "' to float", callLine);
-                }
-            } else if (args[0].type == Value::NUMBER) {
-                return args[0];
-            }
-            throw RuntimeError("float() requires number or string, got " + args[0].getType(), callLine);
-        }
-        
-        if (name == "uppercase") {
-            if (args.size() == 0) {
-                throw RuntimeError("uppercase() expects 1 argument, got 0", callLine);
-            }
-            if (args[0].type != Value::STRING) {
-                throw RuntimeError("uppercase() requires a string, got " + args[0].getType(), callLine);
-            }
-            std::string result = args[0].str;
-            std::transform(result.begin(), result.end(), result.begin(), ::toupper);
-            return Value(result);
-        }
-        
-        if (name == "lowercase") {
-            if (args.size() == 0) {
-                throw RuntimeError("lowercase() expects 1 argument, got 0", callLine);
-            }
-            if (args[0].type != Value::STRING) {
-                throw RuntimeError("lowercase() requires a string, got " + args[0].getType(), callLine);
-            }
-            std::string result = args[0].str;
-            std::transform(result.begin(), result.end(), result.begin(), ::tolower);
-            return Value(result);
-        }
-        
-        if (name == "substr") {
-            if (args.size() < 3) {
-                throw RuntimeError("substr() expects 3 arguments (string, start, length), got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::STRING) {
-                throw RuntimeError("substr() first argument must be a string, got " + args[0].getType(), callLine);
-            }
-            if (args[1].type != Value::NUMBER || args[2].type != Value::NUMBER) {
-                throw RuntimeError("substr() start and length must be numbers", callLine);
-            }
-            int start = static_cast<int>(args[1].num);
-            int length = static_cast<int>(args[2].num);
-            if (start < 0 || start >= static_cast<int>(args[0].str.length())) {
-                throw RuntimeError("substr(): start index out of bounds", callLine);
-            }
-            return Value(args[0].str.substr(start, length));
-        }
-        
-        if (name == "split") {
-            if (args.size() < 2) {
-                throw RuntimeError("split() expects 2 arguments (string, delimiter), got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::STRING || args[1].type != Value::STRING) {
-                throw RuntimeError("split() requires two strings", callLine);
-            }
-            std::vector<Value> result;
-            std::string str = args[0].str;
-            std::string delim = args[1].str;
-            if (delim.empty()) {
-                throw RuntimeError("split(): delimiter cannot be empty", callLine);
-            }
-            size_t pos = 0;
-            while ((pos = str.find(delim)) != std::string::npos) {
-                result.push_back(Value(str.substr(0, pos)));
-                str.erase(0, pos + delim.length());
-            }
-            result.push_back(Value(str));
-            return Value(result);
-        }
-        
-        if (name == "join") {
-            if (args.size() < 2) {
-                throw RuntimeError("join() expects 2 arguments (array, separator), got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::ARRAY) {
-                throw RuntimeError("join() first argument must be an array, got " + args[0].getType(), callLine);
-            }
-            if (args[1].type != Value::STRING) {
-                throw RuntimeError("join() second argument must be a string, got " + args[1].getType(), callLine);
-            }
-            std::string result;
-            for (size_t i = 0; i < args[0].array.size(); i++) {
-                result += args[0].array[i].toString();
-                if (i < args[0].array.size() - 1) {
-                    result += args[1].str;
-                }
-            }
-            return Value(result);
-        }
-        
-        if (name == "read_file") {
-            if (args.size() == 0) {
-                throw RuntimeError("read_file() expects 1 argument (filename), got 0", callLine);
-            }
-            if (args[0].type != Value::STRING) {
-                throw RuntimeError("read_file() requires a string filename, got " + args[0].getType(), callLine);
-            }
-            std::ifstream file(args[0].str);
-            if (!file) {
-                throw RuntimeError("read_file(): cannot open file '" + args[0].str + "'", callLine);
-            }
-            std::stringstream buffer;
-            buffer << file.rdbuf();
-            return Value(buffer.str());
-        }
-        
-        if (name == "write_file") {
-            if (args.size() < 2) {
-                throw RuntimeError("write_file() expects 2 arguments (filename, content), got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::STRING || args[1].type != Value::STRING) {
-                throw RuntimeError("write_file() requires two strings", callLine);
-            }
-            std::ofstream file(args[0].str);
-            if (!file) {
-                throw RuntimeError("write_file(): cannot open file '" + args[0].str + "' for writing", callLine);
-            }
-            file << args[1].str;
-            return Value(true);
-        }
-        
-        if (name == "append_file") {
-            if (args.size() < 2) {
-                throw RuntimeError("append_file() expects 2 arguments (filename, content), got " + std::to_string(args.size()), callLine);
-            }
-            if (args[0].type != Value::STRING || args[1].type != Value::STRING) {
-                throw RuntimeError("append_file() requires two strings", callLine);
-            }
-            std::ofstream file(args[0].str, std::ios::app);
-            if (!file) {
-                throw RuntimeError("append_file(): cannot open file '" + args[0].str + "' for appending", callLine);
-            }
-            file << args[1].str;
-            return Value(true);
-        }
-        
-        if (name == "file_exists") {
-            if (args.size() == 0) {
-                throw RuntimeError("file_exists() expects 1 argument (filename), got 0", callLine);
-            }
-            if (args[0].type != Value::STRING) {
-                throw RuntimeError("file_exists() requires a string filename, got " + args[0].getType(), callLine);
-            }
-            std::ifstream file(args[0].str);
-            return Value(file.good());
-        }
-        
-        if (name == "input") {
-            // input() - read a line from stdin
-            // input(prompt) - print prompt then read a line
-            std::string prompt = "";
-            if (args.size() > 0) {
-                if (args[0].type != Value::STRING) {
-                    throw RuntimeError("input() prompt must be a string, got " + args[0].getType(), callLine);
-                }
-                prompt = args[0].str;
-            }
-            
-            if (!prompt.empty()) {
-                std::cout << prompt;
-                std::cout.flush();
-            }
-            
-            std::string line;
-            if (std::getline(std::cin, line)) {
-                return Value(line);
-            } else {
-                return Value("");
-            }
-        }
-
-        ChocoGUI* gui = ChocoGUI::getInstance(0, nullptr);
-        gui->setInterpreter(this);
-
-        if (name == "gui_init") return gui->gui_init(args, callLine);
-        if (name == "gui_window") return gui->gui_window(args, callLine);
-        if (name == "gui_button") return gui->gui_button(args, callLine);
-        if (name == "gui_label") return gui->gui_label(args, callLine);
-        if (name == "gui_entry") return gui->gui_entry(args, callLine);
-        if (name == "gui_box") return gui->gui_box(args, callLine);
-        if (name == "gui_add") return gui->gui_add(args, callLine);
-        if (name == "gui_set_text") return gui->gui_set_text(args, callLine);
-        if (name == "gui_get_text") return gui->gui_get_text(args, callLine);
-        if (name == "gui_on") return gui->gui_on(args, callLine);
-        if (name == "gui_show") return gui->gui_show(args, callLine);
-        if (name == "gui_run") return gui->gui_run(args, callLine);
-        if (name == "gui_quit") return gui->gui_quit(args, callLine);
-        if (name == "gui_checkbox") return gui->gui_checkbox(args, callLine);
-        if (name == "gui_textview") return gui->gui_textview(args, callLine);
-        if (name == "gui_frame") return gui->gui_frame(args, callLine);
-        if (name == "gui_separator") return gui->gui_separator(args, callLine);
-        if (name == "gui_set_sensitive") return gui->gui_set_sensitive(args, callLine);
-        if (name == "gui_get_checked") return gui->gui_get_checked(args, callLine);
-        if (name == "gui_set_checked") return gui->gui_set_checked(args, callLine);
-        // User-defined functions
-        auto it = functions.find(name);
-        if (it == functions.end()) {
-            throw RuntimeError("Undefined function '" + name + "'", callLine);
-        }
-
-        Function& func = it->second;
-        
-        if (args.size() < func.params.size()) {
-            throw RuntimeError("Function '" + name + "' expects " + std::to_string(func.params.size()) + 
-                             " arguments, got " + std::to_string(args.size()), callLine);
-        }
-        
-        scopes.push_back(std::unordered_map<std::string, Value>());
-        
-        for (size_t i = 0; i < func.params.size() && i < args.size(); i++) {
-            scopes.back()[func.params[i]] = args[i];
-        }
-
-        size_t savedCurrent = current;
-        current = func.bodyStart;
-        bool wasInFunction = inFunction;
-        inFunction = true;
-        hasReturned = false;
-        returnValue = Value();
-
-        while (current < func.bodyEnd && !isAtEnd() && !hasReturned) {
-            statement();
-        }
-
-        Value result = returnValue;
-        hasReturned = false;
-        inFunction = wasInFunction;
-        
-        scopes.pop_back();
-        
-        current = savedCurrent;
-        return result;
-    }
-
     Value primary() {
         if (match(TOKEN_NUMBER)) {
             return Value(std::stod(tokens[current - 1].value));
@@ -1853,8 +1852,14 @@ const std::unordered_map<std::string, bool> Interpreter::builtinFunctions = {
     {"gui_get_checked", true}, {"gui_set_checked", true}
 };
 
+static Value interpreterCallbackWrapper(Interpreter* interp, const std::string& funcName, 
+                                       const std::vector<Value>& args, int line) {
+    return interp->callFunction(funcName, args, line);
+}
+
 int main(int argc, char* argv[]) {
-    ChocoGUI::getInstance(argc, argv);
+    ChocoGUI* gui = ChocoGUI::getInstance(argc, argv);
+    gui->setCallbackFunction(interpreterCallbackWrapper);
     if (argc == 1) {
         std::cout << "======================================" << std::endl;
         std::cout << "  ChocoLang 0.5.0 - Nutty Nougat" << std::endl;
@@ -2004,6 +2009,11 @@ int main(int argc, char* argv[]) {
         std::vector<Token> tokens = lexer.tokenize();
 
         Interpreter interpreter(tokens);
+
+        ChocoGUI* gui = ChocoGUI::getInstance(argc, argv);
+        gui->setCallbackFunction(interpreterCallbackWrapper);
+        gui->setInterpreter(&interpreter);
+
         interpreter.execute();
         
         return 0;
